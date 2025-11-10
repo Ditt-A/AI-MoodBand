@@ -1,0 +1,332 @@
+/* ========== Theme tokens ========== */
+:root{
+  --bg:#0f1115;
+  --card:#171a21;
+  --card-2:#1d2129;
+  --text:#e7e7ea;
+  --muted:#a9a9b3;
+  --border:#2a2f3a;
+  --accent:#4285F4; /* ganti kalau mau brand color lain */
+  --accent-2:#357ae8;
+  --success:#22c55e;
+  --danger:#ef4444;
+  --radius:14px;
+  --shadow:0 8px 28px rgba(0,0,0,.35);
+}
+
+/* ========== Base ========== */
+*{ box-sizing:border-box }
+html, body{
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body{
+  margin:0;
+  padding:32px 16px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+}
+
+/* ========== Shell ========== */
+.box-1{
+  width:100%;
+  max-width:880px;
+  background:linear-gradient(180deg, var(--card), var(--card-2));
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:22px 22px 10px;
+}
+
+.box-1 h1{
+  margin:0 0 14px;
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:.2px;
+}
+
+/* ========== Form ========== */
+.form1{ width:100% }
+
+.input-container{
+  display:grid;
+  gap:12px;
+}
+
+.input1{
+  width:100%;
+  min-height:110px;
+  padding:14px 14px 16px;
+  font-size:15.5px;
+  line-height:1.5;
+  background:#11141a;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  outline:none;
+  transition:border .18s ease, box-shadow .18s ease;
+  resize:vertical;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+}
+.input1::placeholder{ color:#7c7f89 }
+.input1:focus{
+  border-color:color-mix(in srgb, var(--accent) 60%, white 0%);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+/* File input (minimal styling, tetap native agar stabil) */
+.input2{
+  width:100%;
+  color:var(--muted);
+}
+
+/* Mood chips */
+.mood{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.mood label{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#121621;
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:8px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .08s ease, border-color .18s ease, background .18s ease;
+}
+.mood input[type="radio"]{
+  appearance:none;
+  width:14px; height:14px;
+  border-radius:50%;
+  border:2px solid #5b5f6b;
+  outline:none;
+  display:inline-block;
+  position:relative;
+}
+.mood input[type="radio"]::after{
+  content:"";
+  position:absolute; inset:2px;
+  border-radius:50%;
+  background:transparent;
+  transition:background .18s ease;
+}
+.mood label:has(input[type="radio"]:checked){
+  border-color:var(--accent);
+  background:rgba(66,133,244,.12);
+}
+.mood label:has(input[type="radio"]:checked) input[type="radio"]{
+  border-color:var(--accent);
+}
+.mood label:has(input[type="radio"]:checked) input[type="radio"]::after{
+  background:var(--accent);
+}
+.mood label:active{ transform:scale(.98) }
+
+/* Button */
+button{
+  appearance:none;
+  width:100%;
+  padding:12px 16px;
+  font-size:15px;
+  font-weight:600;
+  background:var(--accent);
+  color:white;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  transition:background .18s ease, transform .08s ease, box-shadow .18s ease;
+  box-shadow:0 6px 16px rgba(66,133,244,.25);
+}
+button:hover{ background:var(--accent-2) }
+button:active{ transform:translateY(1px) }
+button:focus-visible{
+  outline: none;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* ========== Result card ========== */
+.result{
+  width:100%;
+  max-width:880px;
+  margin:16px auto 0;
+  background:linear-gradient(180deg, var(--card), var(--card-2));
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:18px 20px;
+}
+.result h2{
+  margin:4px 0 12px;
+  font-size:18px;
+  color:#fff;
+}
+.result .result{
+  /* kalau inner .result ikut ter-render */
+  background:transparent;
+  border:none;
+  box-shadow:none;
+  padding:0;
+}
+
+/* Konten yang dihasilkan model (kamu render pakai {{ result|safe }}) */
+.result p{
+  margin:10px 0;
+  color:#d5d7df;
+}
+.result b{ color:#ffffff }
+.result ul{
+  margin:8px 0 4px 18px;
+  padding:0;
+}
+.result li{
+  margin:6px 0;
+  color:#cdd0d9;
+}
+
+/* Kode/monospace yang mungkin muncul pada item aksi */
+.result code{
+  background:#0e1117;
+  border:1px solid #232938;
+  padding:3px 6px;
+  border-radius:8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size:13px;
+  color:#e6edf3;
+}
+
+/* Pre (kalau masih dipakai di halaman lain) */
+pre{
+  background:#0e1117;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #232938;
+  overflow:auto;
+  color:#e6edf3;
+}
+
+/* ========== Helpers / states ========== */
+.alert{
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:#151924;
+  color:#eaeaf1;
+}
+.alert.success{ border-color:color-mix(in srgb, var(--success) 50%, var(--border)); background:rgba(34,197,94,.12) }
+.alert.danger{ border-color:color-mix(in srgb, var(--danger) 50%, var(--border)); background:rgba(239,68,68,.12) }
+
+/* ========== Responsive ========== */
+@media (max-width: 640px){
+  body{ padding:20px 12px }
+  .box-1, .result{ padding:16px }
+  .input1{ min-height:120px; font-size:15px }
+  button{ font-size:15px }
+}
+
+
+.mood-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.mood-label {
+  font-size: 14px;
+  opacity: .85;
+  margin-right: 6px;
+}
+
+.mood {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #222;
+  border: 1px solid #444;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mood input {
+  accent-color: #4285F4;
+}
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.result .result-body {
+  font-size: 16px;
+  color: #d3d3d3;
+  line-height: 1.6;
+}
+
+/* Grup chip mood */
+.mood-group {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+
+/* Bentuk chip dasar */
+.mood-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid #2c2f36;
+  border-radius: 9999px; background: #1b1e24; color: #e5e7eb;
+  cursor: pointer; user-select: none; transition: .15s ease;
+}
+
+/* Sembunyikan radio tapi tetap aksesibel */
+.mood-chip > input[type="radio"] {
+  position: absolute; opacity: 0; width: 0; height: 0;
+}
+
+/* Hover state */
+.mood-chip:hover { border-color: #3b82f6; }
+
+/* Focus ring (keyboard) */
+.mood-chip:has(input[type="radio"]:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(59,130,246,.35);
+}
+
+/* === SELECTED STATE === */
+.mood-chip:has(input[type="radio"]:checked) {
+  background: #2563eb;            /* biru */
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* Opsional: titik radio kecil ikut ganti */
+.mood-chip .dot {
+  width: 12px; height: 12px; border-radius: 999px;
+  border: 2px solid #94a3b8; display: inline-block;
+}
+.mood-chip:has(input[type="radio"]:checked) .dot {
+  border-color: #bfdbfe; background: #93c5fd;
+}
+
+.btn-secondary{
+  padding:10px 16px; font-size:16px;
+  background:#374151; color:#e5e7eb;
+  border:1px solid #4b5563; border-radius:8px;
+  cursor:pointer;
+}
+.btn-secondary:hover{ background:#4b5563; }

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>AI MoodBand — Sandbox</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="box-1">
+    <h1>AI MoodBand — Sandbox</h1>
+
+    <form action="/search" method="POST" enctype="multipart/form-data" class="form1">
+      <!-- PILIH EMOJI/MOOD -->
+      <div class="mood-group">
+        <label class="mood-chip">
+          <input type="radio" name="mood" value="normal"
+                {% if (prev_mood or '') == 'normal' %}checked{% endif %}>
+          <span class="dot"></span> 🙂 Normal
+        </label>
+
+        <label class="mood-chip">
+          <input type="radio" name="mood" value="sedih"
+                {% if (prev_mood or '') == 'sedih' %}checked{% endif %}>
+          <span class="dot"></span> 😔 Sedih
+        </label>
+
+        <label class="mood-chip">
+          <input type="radio" name="mood" value="marah"
+                {% if (prev_mood or '') == 'marah' %}checked{% endif %}>
+          <span class="dot"></span> 😡 Marah
+        </label>
+
+        <label class="mood-chip">
+          <input type="radio" name="mood" value="senang"
+                {% if (prev_mood or '') == 'senang' %}checked{% endif %}>
+          <span class="dot"></span> 😄 Senang
+        </label>
+      </div>
+
+
+      <!-- INPUT CURHAT (opsional; kosongkan utk opening) -->
+      <textarea name="query" class="input1" rows="4"
+        placeholder="(Opsional) Tulis curhatmu di sini. Atau kosongkan & klik 'Mulai dari Emoji' untuk menyapa duluan."></textarea>
+
+      <!-- (opsional) upload gambar -->
+      <input type="file" name="image" class="input2" accept=".png,.jpg,.jpeg,.gif">
+      
+      <div class="btn-row">
+      <!-- tombol untuk memicu opening -->
+      <button type="submit" name="mode" value="open">Mulai dari Emoji</button>
+      <!-- tombol untuk kirim curhat biasa -->
+      <button type="submit" name="mode" value="chat">Kirim Curhat</button>
+      <!-- ⬇️ tombol baru: panggil /summarize -->
+      <button type="submit" formaction="/summarize" formmethod="POST" class="btn-secondary">
+        Buat Ringkasan Harian
+      </button>
+    </div>
+
+    </form>
+  </div>
+
+  <div id="result" class="result">
+    {% if result %}
+      <h2>Result:</h2>
+      <div class="result-body">{{ result | safe }}</div>
+    {% endif %}
+  </div>
+  <div id="summary" class="result">
+  {% if summary %}
+    {{ summary | safe }}
+  {% endif %}
+</div>
+</body>
+</html>
