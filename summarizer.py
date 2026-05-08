@@ -1,19 +1,43 @@
-import os, json, datetime as dt, traceback
+import os, sys, json, datetime as dt, traceback
 from dotenv import load_dotenv
 
 try:
     from google import genai
+    _GENAI_IMPORT_ERROR = None
 except Exception as e:
-    raise RuntimeError("Library 'google-genai' belum terpasang atau konflik versi. "
-                       "Install: pip install google-genai") from e
+    genai = None
+    _GENAI_IMPORT_ERROR = e
 
-load_dotenv(dotenv_path="APAAC/API.env")
-API_KEY = os.getenv("API_KEY_SUMMARIZER")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, "API.env")
+load_dotenv(dotenv_path=ENV_PATH)
+
+def _read_api_key(name: str) -> str | None:
+    value = (os.getenv(name) or "").strip()
+    if not value or value == "-":
+        return None
+    return value
+
+API_KEY = _read_api_key("API_KEY_SUMMARIZER")
 
 MODEL = "gemini-2.5-flash"
 client = None
-if API_KEY:
+if API_KEY and genai is not None:
     client = genai.Client(api_key=API_KEY, http_options={'api_version': 'v1alpha'})
+
+def _summarizer_unavailable_reason() -> str | None:
+    if genai is None:
+        base = (
+            "Library 'google-genai' tidak bisa diimport pada interpreter ini. "
+            f"Python aktif: {sys.executable}. "
+            "Aktifkan virtualenv proyek lalu install: python -m pip install google-genai."
+        )
+        if _GENAI_IMPORT_ERROR:
+            return f"{base} Detail: {_GENAI_IMPORT_ERROR}"
+        return base
+    if not API_KEY:
+        return "Ringkasan tidak tersedia (API key summarizer belum diset)."
+    return None
 
 SYSTEM_PROMPT = """
 Kamu adalah peringkas harian untuk percakapan dukungan emosional non-klinis.
@@ -92,9 +116,10 @@ def summarize_day(messages: list[dict], analytics: dict | None = None, carry_ove
     analytics: {"avg_stress": int, "max_stress": int, "top_emotions": [...], "top_topics": [...]}
     carry_over_notes: ringkasan kemarin (opsional)
     """
-    if not API_KEY or not client:
+    unavailable_reason = _summarizer_unavailable_reason()
+    if unavailable_reason or not client:
         return {
-            "daily_summary": "Ringkasan tidak tersedia (API key summarizer belum diset).",
+            "daily_summary": unavailable_reason or "Ringkasan tidak tersedia.",
             "key_points": [],
             "follow_up_tomorrow": [],
             "safety_flag": False

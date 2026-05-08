@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
-from werkzeug.utils import secure_filename
-import os, traceback
+from html import escape
+import traceback
 
 from model import analyze_raw, generate_opening, render_html
 import memory_store as mem
@@ -10,13 +10,8 @@ USER_ID = "demo_user"
 
 app = Flask(__name__, template_folder="templates")
 
-UPLOAD_FOLDER = 'uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['MAX_CONTENT_LENGTH'] = 6 * 1024 * 1024
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -30,17 +25,22 @@ def home():
 def search():
     try:
         mood = request.form.get('mood', 'normal')
-        query = request.form['query']
+        query = (request.form.get('query') or '').strip()
+        mode = (request.form.get('mode') or '').strip().lower()
         file = request.files.get('image')
-        opening = request.form.get('opening') == '1'
+        opening = mode == 'open' or not query
 
         image_data = None
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(image_path)
-            with open(image_path, 'rb') as image_file:
-                image_data = image_file.read()
+        image_mime_type = None
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                return render_template(
+                    'main.html',
+                    result="<div class='result'>Format gambar tidak didukung. Gunakan png/jpg/jpeg/gif/webp.</div>",
+                    prev_mood=mood
+                )
+            image_data = file.read()
+            image_mime_type = file.mimetype
 
         # 1) rakit memory_context
         recent = mem.list_recent_messages(USER_ID, limit=8)
@@ -69,7 +69,13 @@ def search():
             )
         else:
             # MODE BIASA: user -> model
-            data = analyze_raw(query, mood_emoji=mood, memory_context=memory_context)
+            data = analyze_raw(
+                query,
+                mood_emoji=mood,
+                memory_context=memory_context,
+                image_data=image_data,
+                image_mime_type=image_mime_type,
+            )
             # 3) simpan memori (user + coach)
             mem.upsert_memory(USER_ID, role="user",  text=query, meta={"mood": mood})
             mem.upsert_memory(
@@ -139,18 +145,32 @@ def summarize():
         )
 
 def _render_summary_card(out: dict) -> str:
-    kp = "".join(f"<li>{x}</li>" for x in (out.get("key_points") or []))
-    fu = "".join(f"<li>{x}</li>" for x in (out.get("follow_up_tomorrow") or []))
+    def _render_items(items: list[str]) -> str:
+        if not items:
+            return "<li class='muted-item'>(tidak ada)</li>"
+        return "".join(f"<li>{escape(str(item))}</li>" for item in items)
+
+    key_points = _render_items(out.get("key_points") or [])
+    follow_up = _render_items(out.get("follow_up_tomorrow") or [])
     safe = "Ya" if out.get("safety_flag") else "Tidak"
+    safety_class = "summary-safe" if not out.get("safety_flag") else "summary-alert"
+    summary_text = escape(out.get("daily_summary", "(kosong)"))
     return (
-        "<div class='result'>"
-        "<h2>Ringkasan Harian</h2>"
-        f"<p>{out.get('daily_summary','(kosong)')}</p>"
-        "<h3>Poin Kunci</h3>"
-        f"<ul>{kp or '<li>(tidak ada)</li>'}</ul>"
-        "<h3>Follow-up Besok</h3>"
-        f"<ul>{fu or '<li>(tidak ada)</li>'}</ul>"
-        f"<p><b>Safety flag:</b> {safe}</p>"
+        "<div class='summary-card'>"
+        "<div class='summary-lede'>"
+        f"<p class='summary-copy'>{summary_text}</p>"
+        f"<span class='summary-badge {safety_class}'>Safety flag: {safe}</span>"
+        "</div>"
+        "<div class='summary-grid'>"
+        "<section class='summary-section'>"
+        "<h4>Poin kunci</h4>"
+        f"<ul class='clean-list'>{key_points}</ul>"
+        "</section>"
+        "<section class='summary-section'>"
+        "<h4>Follow-up besok</h4>"
+        f"<ul class='clean-list'>{follow_up}</ul>"
+        "</section>"
+        "</div>"
         "</div>"
     )
 

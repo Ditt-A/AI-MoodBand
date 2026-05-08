@@ -2,74 +2,208 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>AI MoodBand — Sandbox</title>
+  <title>AI MoodBand — Curhat Space</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101726">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="box-1">
-    <h1>AI MoodBand — Sandbox</h1>
+  <div class="bg-orb bg-orb-a"></div>
+  <div class="bg-orb bg-orb-b"></div>
+  <div class="bg-grid"></div>
 
-    <form action="/search" method="POST" enctype="multipart/form-data" class="form1">
-      <!-- PILIH EMOJI/MOOD -->
-      <div class="mood-group">
-        <label class="mood-chip">
-          <input type="radio" name="mood" value="normal"
-                {% if (prev_mood or '') == 'normal' %}checked{% endif %}>
-          <span class="dot"></span> 🙂 Normal
-        </label>
-
-        <label class="mood-chip">
-          <input type="radio" name="mood" value="sedih"
-                {% if (prev_mood or '') == 'sedih' %}checked{% endif %}>
-          <span class="dot"></span> 😔 Sedih
-        </label>
-
-        <label class="mood-chip">
-          <input type="radio" name="mood" value="marah"
-                {% if (prev_mood or '') == 'marah' %}checked{% endif %}>
-          <span class="dot"></span> 😡 Marah
-        </label>
-
-        <label class="mood-chip">
-          <input type="radio" name="mood" value="senang"
-                {% if (prev_mood or '') == 'senang' %}checked{% endif %}>
-          <span class="dot"></span> 😄 Senang
-        </label>
+  <main class="app-shell">
+    <header class="topbar panel-surface">
+      <div class="brand-lockup">
+        <div class="brand-mark">MB</div>
+        <div class="brand-copy">
+          <p class="eyebrow">AI MoodBand</p>
+          <h1>Ruang curhat yang tenang, rapi, dan siap bantu langkah berikutnya.</h1>
+        </div>
       </div>
+      <div class="status-pill"><span class="status-dot"></span> mood: {{ prev_mood or 'normal' }}</div>
+    </header>
 
+    <section class="hero-panel panel-surface">
+      <div class="hero-copy">
+        <p class="section-kicker">Check-in emosi</p>
+        <h2>Mulai dari mood emoji, tulis curhat singkat, atau unggah gambar bila butuh konteks.</h2>
+        <p class="hero-text">Hasilnya dirapikan jadi refleksi singkat, pertanyaan lanjutan, dan ringkasan harian yang bisa disimpan.</p>
+        <div class="hero-tags">
+          <span>Listen-first</span>
+          <span>Memory aware</span>
+          <span>Daily summary</span>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <p class="hero-card-kicker">Apa yang bisa dilakukan</p>
+        <ul class="feature-list">
+          <li><strong>Mulai dari emoji</strong><span>Sapaan awal menyesuaikan suasana hati yang dipilih.</span></li>
+          <li><strong>Kirim curhat</strong><span>Model merangkum emosi, topik, dan tingkat stres.</span></li>
+          <li><strong>Buat ringkasan</strong><span>Ambil pola harian tanpa kehilangan konteks.</span></li>
+        </ul>
+      </aside>
+    </section>
 
-      <!-- INPUT CURHAT (opsional; kosongkan utk opening) -->
-      <textarea name="query" class="input1" rows="4"
-        placeholder="(Opsional) Tulis curhatmu di sini. Atau kosongkan & klik 'Mulai dari Emoji' untuk menyapa duluan."></textarea>
+    <section class="workspace-grid">
+      <article class="panel composer-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Composer</p>
+            <h3>Atur mood dan curhatmu</h3>
+          </div>
+          <span class="panel-chip">max 6 MB</span>
+        </div>
 
-      <!-- (opsional) upload gambar -->
-      <input type="file" name="image" class="input2" accept=".png,.jpg,.jpeg,.gif">
-      
-      <div class="btn-row">
-      <!-- tombol untuk memicu opening -->
-      <button type="submit" name="mode" value="open">Mulai dari Emoji</button>
-      <!-- tombol untuk kirim curhat biasa -->
-      <button type="submit" name="mode" value="chat">Kirim Curhat</button>
-      <!-- ⬇️ tombol baru: panggil /summarize -->
-      <button type="submit" formaction="/summarize" formmethod="POST" class="btn-secondary">
-        Buat Ringkasan Harian
-      </button>
-    </div>
+        <form action="/search" method="POST" enctype="multipart/form-data" class="composer-form">
+          <div class="field-block">
+            <div class="field-label-row">
+              <label class="field-label">Pilih mood</label>
+              <span class="field-help">Ini mengubah nada sapaan awal</span>
+            </div>
+            <div class="mood-group">
+              <label class="mood-chip">
+                <input type="radio" name="mood" value="normal" {% if (prev_mood or '') == 'normal' %}checked{% endif %}>
+                <span class="dot"></span>
+                <span class="chip-body"><strong>Normal</strong><small>Mulai dari nada netral</small></span>
+              </label>
 
-    </form>
-  </div>
+              <label class="mood-chip">
+                <input type="radio" name="mood" value="sedih" {% if (prev_mood or '') == 'sedih' %}checked{% endif %}>
+                <span class="dot"></span>
+                <span class="chip-body"><strong>Sedih</strong><small>Pelan dan lebih lembut</small></span>
+              </label>
 
-  <div id="result" class="result">
-    {% if result %}
-      <h2>Result:</h2>
-      <div class="result-body">{{ result | safe }}</div>
-    {% endif %}
-  </div>
-  <div id="summary" class="result">
-  {% if summary %}
-    {{ summary | safe }}
-  {% endif %}
-</div>
+              <label class="mood-chip">
+                <input type="radio" name="mood" value="marah" {% if (prev_mood or '') == 'marah' %}checked{% endif %}>
+                <span class="dot"></span>
+                <span class="chip-body"><strong>Marah</strong><small>Tegas, tapi tetap aman</small></span>
+              </label>
+
+              <label class="mood-chip">
+                <input type="radio" name="mood" value="senang" {% if (prev_mood or '') == 'senang' %}checked{% endif %}>
+                <span class="dot"></span>
+                <span class="chip-body"><strong>Senang</strong><small>Hangat dan ringan</small></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field-block">
+            <div class="field-label-row">
+              <label class="field-label" for="query">Curhat</label>
+              <span class="field-help">Opsional, satu-dua kalimat sudah cukup</span>
+            </div>
+            <textarea id="query" name="query" class="input1" rows="5"
+              placeholder="Tuliskan apa yang paling berat hari ini. Kalau kosong, klik 'Mulai dari Emoji'."></textarea>
+          </div>
+
+          <div class="field-block">
+            <div class="field-label-row">
+              <label class="field-label" for="image">Lampiran gambar</label>
+              <span class="field-help">PNG, JPG, GIF, atau WEBP hingga 6 MB</span>
+            </div>
+            <input id="image" type="file" name="image" class="input2" accept=".png,.jpg,.jpeg,.gif,.webp">
+          </div>
+
+          <div class="button-grid">
+            <button type="submit" name="mode" value="open" class="btn btn-primary">Mulai dari Emoji</button>
+            <button type="submit" name="mode" value="chat" class="btn btn-secondary">Kirim Curhat</button>
+          </div>
+
+          <button type="submit" formaction="/summarize" formmethod="POST" class="btn btn-ghost btn-wide">
+            Buat Ringkasan Harian
+          </button>
+        </form>
+      </article>
+
+      <aside class="panel guide-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">How it works</p>
+            <h3>Tiga langkah singkat</h3>
+          </div>
+        </div>
+
+        <ol class="step-list">
+          <li>
+            <span class="step-index">01</span>
+            <div>
+              <strong>Pilih mood</strong>
+              <p>Menentukan nada pembuka supaya respon terasa lebih pas.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index">02</span>
+            <div>
+              <strong>Tulis curhat atau unggah gambar</strong>
+              <p>Kalau kosong, aplikasi langsung masuk mode sapaan awal.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index">03</span>
+            <div>
+              <strong>Lihat hasil dan ringkasan</strong>
+              <p>Respons, topik, dan langkah kecil ditampilkan di panel kanan.</p>
+            </div>
+          </li>
+        </ol>
+
+        <div class="callout-card">
+          <p class="callout-label">Tip</p>
+          <p>Kalau lagi penuh banget, tulis versi singkat dulu. Kamu selalu bisa kirim detailnya belakangan.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="output-grid">
+      <article class="panel output-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Response</p>
+            <h3>Hasil analisis</h3>
+          </div>
+          <span class="panel-chip">status: live</span>
+        </div>
+        <div class="panel-content">
+          {% if result %}
+            {{ result | safe }}
+          {% else %}
+            <div class="empty-state">
+              <strong>Belum ada respons.</strong>
+              <p>Mulai dengan mood emoji atau kirim curhat singkat untuk melihat hasilnya di sini.</p>
+            </div>
+          {% endif %}
+        </div>
+      </article>
+
+      <article class="panel output-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Summary</p>
+            <h3>Ringkasan harian</h3>
+          </div>
+          <span class="panel-chip">carry-over</span>
+        </div>
+        <div class="panel-content">
+          {% if summary %}
+            {{ summary | safe }}
+          {% else %}
+            <div class="empty-state">
+              <strong>Ringkasan belum dibuat.</strong>
+              <p>Gunakan tombol ringkasan setelah ada percakapan hari ini.</p>
+            </div>
+          {% endif %}
+        </div>
+      </article>
+    </section>
+
+    <footer class="page-footer">
+      <span>Local Flask interface</span>
+      <span>Designed for calm, not clutter</span>
+    </footer>
+  </main>
 </body>
 </html>

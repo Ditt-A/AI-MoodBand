@@ -1,20 +1,50 @@
 # model.py
-import os, json, datetime as dt, traceback
+import os, sys, json, datetime as dt, traceback
+from html import escape
 from dotenv import load_dotenv
 
 try:
     from google import genai
+    _GENAI_IMPORT_ERROR = None
 except Exception as e:
-    raise RuntimeError("Library 'google-genai' belum terpasang atau konflik versi. "
-                       "Install: pip install google-genai") from e
+    genai = None
+    _GENAI_IMPORT_ERROR = e
 
-load_dotenv(dotenv_path="APAAC/API.env")
-API_KEY = os.getenv("API_KEY_GENERATOR")
+try:
+    from google.genai import types as genai_types
+except Exception:
+    genai_types = None
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, "API.env")
+load_dotenv(dotenv_path=ENV_PATH)
+
+def _read_api_key(name: str) -> str | None:
+    value = (os.getenv(name) or "").strip()
+    if not value or value == "-":
+        return None
+    return value
+
+API_KEY = _read_api_key("API_KEY_GENERATOR")
 
 MODEL = "gemini-2.5-flash"
 client = None
-if API_KEY:
+if API_KEY and genai is not None:
     client = genai.Client(api_key=API_KEY, http_options={'api_version': 'v1alpha'})
+
+def _model_unavailable_reason() -> str | None:
+    if genai is None:
+        base = (
+            "Library 'google-genai' tidak bisa diimport pada interpreter ini. "
+            f"Python aktif: {sys.executable}. "
+            "Aktifkan virtualenv proyek lalu install: python -m pip install google-genai."
+        )
+        if _GENAI_IMPORT_ERROR:
+            return f"{base} Detail: {_GENAI_IMPORT_ERROR}"
+        return base
+    if not API_KEY:
+        return "API_KEY tidak ditemukan. Cek file API.env (API_KEY_GENERATOR=...)."
+    return None
 
 SYSTEM_PROMPT = """
 Kamu adalah pendamping emosional non-klinis untuk remaja/mahasiswa Indonesia.
@@ -174,6 +204,51 @@ def _safe_json_loads(text: str) -> dict:
         "suggested_actions": [],
         "gamification": {"streak_increment": False}
     }
+
+def _detect_image_mime(image_data: bytes, declared_mime: str | None = None) -> str:
+    allowed = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+    if declared_mime in allowed:
+        return declared_mime
+    if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if image_data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if image_data.startswith(b"GIF87a") or image_data.startswith(b"GIF89a"):
+        return "image/gif"
+    if image_data.startswith(b"RIFF") and image_data[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
+
+def _extract_response_text(response) -> str:
+    if getattr(response, "text", None):
+        return response.text.strip()
+    parts = response.candidates[0].content.parts if getattr(response, "candidates", None) else []
+    return "\n".join(
+        [
+            (getattr(p, "text", None) or getattr(getattr(p, "executable_code", None) or {}, "code", ""))
+            for p in (parts or [])
+        ]
+    ).strip()
+
+def _request_model(prompt: str, image_data: bytes | None = None, image_mime_type: str | None = None):
+    config = {"system_instruction": SYSTEM_PROMPT, "response_mime_type": "application/json"}
+    try:
+        if image_data:
+            mime_type = _detect_image_mime(image_data, image_mime_type)
+            if genai_types is not None:
+                image_part = genai_types.Part.from_bytes(data=image_data, mime_type=mime_type)
+            else:
+                image_part = {"inline_data": {"mime_type": mime_type, "data": image_data}}
+            contents = [prompt, image_part]
+        else:
+            contents = prompt
+        return client.models.generate_content(model=MODEL, contents=contents, config=config)
+    except Exception:
+        # Fallback SDK path for text-only requests.
+        if image_data:
+            raise
+        chat = client.chats.create(model=MODEL, config=config)
+        return chat.send_message(prompt)
     
 def _coerce_schema(d: dict) -> dict:
     # analysis
@@ -206,22 +281,21 @@ def analyze_raw(
     mood_emoji: str = "normal",
     memory_context: dict | None = None,
     profile: dict | None = None,
+    image_data: bytes | None = None,
+    image_mime_type: str | None = None,
 ) -> dict:
-    if not API_KEY or not client:
+    unavailable_reason = _model_unavailable_reason()
+    if unavailable_reason or not client:
         return {
             "analysis": {"emotions": [], "stress_score": None, "topics": [], "risk_flag": "none"},
             "conversation_control": {"need_clarification": True, "clarify_question":"", "offer_suggestions": False, "phase":"listen"},
-            "coach_reply": "API_KEY tidak ditemukan. Cek APAAC/API.env (API_KEY_GENERATOR=...).",
+            "coach_reply": unavailable_reason or "Model belum siap digunakan.",
             "suggested_actions": [],
             "gamification": {"streak_increment": False}
         }
     prompt = _build_curhat_payload(query, profile, mood_emoji, memory_context)
     try:
-        chat = client.chats.create(
-            model=MODEL,
-            config={"system_instruction": SYSTEM_PROMPT, "response_mime_type": "application/json"}
-        )
-        r = chat.send_message(prompt)
+        r = _request_model(prompt, image_data=image_data, image_mime_type=image_mime_type)
     except Exception:
         traceback.print_exc()
         return {
@@ -232,8 +306,7 @@ def analyze_raw(
             "gamification": {"streak_increment": False}
         }
 
-    parts = r.candidates[0].content.parts if getattr(r, "candidates", None) else []
-    text = "\n".join([(getattr(p,"text",None) or getattr(getattr(p,"executable_code",None) or {}, "code","")) for p in (parts or [])]).strip()
+    text = _extract_response_text(r)
     return _coerce_schema(_safe_json_loads(text))
 
 def generate_opening(
@@ -241,20 +314,17 @@ def generate_opening(
     memory_context: dict | None = None,
     profile: dict | None = None,
 ) -> dict:
-    if not API_KEY or not client:
+    unavailable_reason = _model_unavailable_reason()
+    if unavailable_reason or not client:
         return _coerce_schema({
             "analysis": {"emotions": [], "stress_score": 0, "topics": [], "risk_flag": "none"},
             "conversation_control": {"need_clarification": True, "clarify_question":"", "offer_suggestions": False, "phase":"listen"},
-            "coach_reply": "API_KEY tidak ditemukan. Cek APAAC/API.env (API_KEY_GENERATOR=...).",
+            "coach_reply": unavailable_reason or "Model belum siap digunakan.",
             "suggested_actions": []
         })
     prompt = _build_curhat_payload("", profile, mood_emoji, memory_context, opening=True)
     try:
-        chat = client.chats.create(
-            model=MODEL,
-            config={"system_instruction": SYSTEM_PROMPT, "response_mime_type": "application/json"}
-        )
-        r = chat.send_message(prompt)
+        r = _request_model(prompt)
     except Exception:
         traceback.print_exc()
         return _coerce_schema({
@@ -264,29 +334,88 @@ def generate_opening(
             "suggested_actions": []
         })
 
-    parts = r.candidates[0].content.parts if getattr(r, "candidates", None) else []
-    text = "\n".join([(getattr(p,"text",None) or getattr(getattr(p,"executable_code",None) or {}, "code","")) for p in (parts or [])]).strip()
+    text = _extract_response_text(r)
     return _coerce_schema(_safe_json_loads(text))
+
+
+def _format_action_card(action) -> str:
+    if isinstance(action, dict) and len(action) == 1:
+        action_name, payload = next(iter(action.items()))
+        label = escape(action_name.replace("_", " ").title())
+        if isinstance(payload, dict) and payload:
+            details = []
+            for key, value in payload.items():
+                pretty_key = escape(str(key).replace("_", " ").title())
+                pretty_value = escape(str(value))
+                details.append(
+                    f"<div class='action-meta-item'><span>{pretty_key}</span><strong>{pretty_value}</strong></div>"
+                )
+            return (
+                "<article class='action-card'>"
+                f"<h4>{label}</h4>"
+                f"<div class='action-meta'>{''.join(details)}</div>"
+                "</article>"
+            )
+        return (
+            "<article class='action-card'>"
+            f"<h4>{label}</h4>"
+            f"<p>{escape(str(payload))}</p>"
+            "</article>"
+        )
+
+    if isinstance(action, str):
+        return f"<article class='action-card'><p>{escape(action)}</p></article>"
+
+    return (
+        "<article class='action-card'>"
+        f"<pre>{escape(json.dumps(action, ensure_ascii=False, indent=2))}</pre>"
+        "</article>"
+    )
 
 
 def _html_from_result(data: dict) -> str:
     a = data.get("analysis", {})
-    reply = data.get("coach_reply", "")
+    cc = data.get("conversation_control", {}) or {}
+    reply = escape(data.get("coach_reply", ""))
     acts = data.get("suggested_actions", []) or []
-    emos = ", ".join(a.get("emotions", [])) or "-"
-    topik = ", ".join(a.get("topics", [])) or "-"
-    skor = a.get("stress_score", "-")
-    risiko = a.get("risk_flag", "none")
+    emos = escape(", ".join(a.get("emotions", [])) or "-")
+    topik = escape(", ".join(a.get("topics", [])) or "-")
+    skor = escape(str(a.get("stress_score", "-")))
+    risiko = escape(str(a.get("risk_flag", "none")))
+    question = escape(cc.get("clarify_question", "") or "")
+    phase = escape(str(cc.get("phase", "listen")))
+    offer = "Ya" if cc.get("offer_suggestions") else "Tidak"
+
+    risk_class = f"risk-{a.get('risk_flag', 'none')}"
 
     html = []
-    html.append("<div class='result' style='line-height:1.5'>")
-    html.append(f"<p><b>Emosi:</b> {emos}<br><b>Skor Stres:</b> {skor}<br><b>Topik:</b> {topik}<br><b>Risiko:</b> {risiko}</p>")
-    html.append(f"<p><b>Coach:</b> {reply}</p>")
+    html.append("<div class='model-result'>")
+    html.append("<div class='metric-grid'>")
+    html.append(
+        f"<div class='metric-card'><span>Emosi</span><strong>{emos}</strong></div>"
+        f"<div class='metric-card'><span>Skor stres</span><strong>{skor}</strong></div>"
+        f"<div class='metric-card'><span>Topik</span><strong>{topik}</strong></div>"
+        f"<div class='metric-card {risk_class}'><span>Risiko</span><strong>{risiko}</strong></div>"
+    )
+    html.append("</div>")
+    html.append("<div class='reply-card'>")
+    html.append("<div class='reply-head'><span class='reply-kicker'>Coach</span>")
+    html.append(f"<span class='reply-chip'>phase: {phase}</span>")
+    html.append("</div>")
+    html.append(f"<p class='reply-copy'>{reply}</p>")
+    if question:
+        html.append(f"<div class='question-callout'>{question}</div>")
+    html.append(
+        "<div class='control-row'>"
+        f"<span class='control-chip'>Tawarkan saran: {offer}</span>"
+        "</div>"
+    )
+    html.append("</div>")
     if acts:
-        html.append("<p><b>Aksi yang disarankan:</b></p><ul>")
-        for act in acts:
-            html.append(f"<li><code>{json.dumps(act, ensure_ascii=False)}</code></li>")
-        html.append("</ul>")
+        html.append("<div class='action-section'><div class='section-label'>Aksi yang disarankan</div><div class='action-grid'>")
+        for act in acts[:3]:
+            html.append(_format_action_card(act))
+        html.append("</div></div>")
     html.append("</div>")
     return "".join(html)
 
@@ -298,6 +427,18 @@ def render_html(data: dict) -> str:
     return _html_from_result(data)
 
 
-def get_model_result(query: str, image_data: bytes | None = None, mood_emoji: str = "normal", memory_context: dict | None = None) -> str:
-    data = analyze_raw(query, mood_emoji=mood_emoji, memory_context=memory_context)
+def get_model_result(
+    query: str,
+    image_data: bytes | None = None,
+    mood_emoji: str = "normal",
+    memory_context: dict | None = None,
+    image_mime_type: str | None = None,
+) -> str:
+    data = analyze_raw(
+        query,
+        mood_emoji=mood_emoji,
+        memory_context=memory_context,
+        image_data=image_data,
+        image_mime_type=image_mime_type,
+    )
     return _html_from_result(data)

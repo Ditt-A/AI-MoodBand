@@ -1,0 +1,13 @@
+# Environment and secrets
+.env
+API.env
+
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+
+# Local app/runtime data
+uploads/
+data/
+*.pkl
+*.index

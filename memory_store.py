@@ -1,17 +1,40 @@
 # memory_store.py
-import os, json, time, uuid, pickle, numpy as np
+import os, sys, json, time, uuid, pickle, numpy as np
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
 from dotenv import load_dotenv
-load_dotenv("APAAC/API.env")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, "API.env")
+load_dotenv(ENV_PATH)
 
-from google import genai
-EMB_API_KEY = os.getenv("API_KEY_TODATABASE")
+def _read_api_key(name: str) -> str | None:
+    value = (os.getenv(name) or "").strip()
+    if not value or value == "-":
+        return None
+    return value
+
+try:
+    from google import genai
+    _GENAI_IMPORT_ERROR = None
+except Exception as e:
+    genai = None
+    _GENAI_IMPORT_ERROR = e
+
+EMB_API_KEY = _read_api_key("API_KEY_TODATABASE")
 EMB_MODEL = "text-embedding-004"
-client = genai.Client(api_key=EMB_API_KEY, http_options={'api_version':'v1alpha'}) if EMB_API_KEY else None
+client = genai.Client(api_key=EMB_API_KEY, http_options={'api_version':'v1alpha'}) if (EMB_API_KEY and genai is not None) else None
 
 def embed_texts(texts: List[str], task_type="retrieval_document") -> np.ndarray:
+    if genai is None:
+        base = (
+            "Library 'google-genai' tidak bisa diimport pada interpreter ini. "
+            f"Python aktif: {sys.executable}. "
+            "Aktifkan virtualenv proyek lalu install: python -m pip install google-genai."
+        )
+        detail = f" Detail: {_GENAI_IMPORT_ERROR}" if _GENAI_IMPORT_ERROR else ""
+        raise RuntimeError(base + detail)
+
     if not client:
         raise RuntimeError("API_KEY_TODATABASE tidak ditemukan")
 
@@ -33,11 +56,12 @@ def embed_texts(texts: List[str], task_type="retrieval_document") -> np.ndarray:
 # --- FAISS index (local) ---
 try:
     import faiss
-except ImportError:
-    raise RuntimeError("Install FAISS: pip install faiss-cpu")
+    _FAISS_IMPORT_ERROR = None
+except ImportError as e:
+    faiss = None
+    _FAISS_IMPORT_ERROR = e
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))     # -> .../APAAC
-DATA_DIR = os.path.join(BASE_DIR, "data")                 # -> .../APAAC/data
+DATA_DIR = os.path.join(BASE_DIR, "data")
 INDEX_PATH = os.path.join(DATA_DIR, "memory.index")
 META_PATH  = os.path.join(DATA_DIR, "memory_meta.pkl")
 
@@ -50,10 +74,13 @@ def _ensure_store():
     global index, metas, row_counter
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    if os.path.exists(INDEX_PATH) and os.path.exists(META_PATH):
-        index = faiss.read_index(INDEX_PATH)
+    if os.path.exists(META_PATH):
         with open(META_PATH, "rb") as f:
             metas = pickle.load(f)
+        if faiss is not None and os.path.exists(INDEX_PATH):
+            index = faiss.read_index(INDEX_PATH)
+        else:
+            index = None
         row_counter = max(metas.keys())+1 if metas else 0
     else:
         index = None
@@ -63,7 +90,7 @@ def _ensure_store():
 
 def _persist():
     os.makedirs(DATA_DIR, exist_ok=True)
-    if index is not None:
+    if faiss is not None and index is not None:
         faiss.write_index(index, INDEX_PATH)
     with open(META_PATH, "wb") as f:
         pickle.dump(metas, f)
@@ -71,25 +98,41 @@ def _persist():
 def upsert_memory(user_id: str, role: str, text: str, meta: Optional[Dict[str, Any]]=None):
     """Simpan satu potongan memori percakapan (user/coach)."""
     _ensure_store()
-    # boleh simpan ringkasan pendek kalau tidak consent teks mentah
-    vec = embed_texts([text])[0].reshape(1,-1)
+
     global index, row_counter
-    if index is None:
-        # pertama kali — bangun index sesuai dimensi embedding
-        index = faiss.IndexFlatIP(vec.shape[1])
-    elif index.d != vec.shape[1]:
-        raise RuntimeError(
-            f"Dimensi embedding ({vec.shape[1]}) ≠ dimensi index ({index.d}). "
-            f"Hapus folder data/ agar index rebuild dgn dimensi baru, "
-            f"atau pastikan model embedding konsisten."
-        )
-    index.add(vec)
+    use_vector_index = False
+    if faiss is not None and client is not None:
+        try:
+            # boleh simpan ringkasan pendek kalau tidak consent teks mentah
+            vec = embed_texts([text])[0].reshape(1, -1)
+            if index is None:
+                # Hindari mapping index/metas tidak sinkron jika data lama sudah ada tanpa index.
+                if row_counter == 0:
+                    index = faiss.IndexFlatIP(vec.shape[1])
+                else:
+                    vec = None
+            if vec is not None and index is not None:
+                if index.d != vec.shape[1]:
+                    raise RuntimeError(
+                        f"Dimensi embedding ({vec.shape[1]}) != dimensi index ({index.d}). "
+                        f"Hapus folder data/ agar index rebuild dgn dimensi baru, "
+                        f"atau pastikan model embedding konsisten."
+                    )
+                index.add(vec)
+                use_vector_index = True
+        except Exception:
+            # Jika index sudah aktif, tambahkan vektor nol agar row index tetap selaras dengan metas.
+            if index is not None:
+                filler = np.zeros((1, index.d), dtype="float32")
+                index.add(filler)
+
     metas[row_counter] = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "role": role,
         "text": text,
         "ts": datetime.now(timezone(timedelta(hours=7))).isoformat(),
+        "indexed": use_vector_index,
         **(meta or {})
     }
     row_counter += 1
@@ -132,7 +175,11 @@ def retrieve_memories(user_id: str, query_text: str, k: int = 4) -> List[Dict[st
     if index is None or len(metas) == 0:
         return []
 
-    qv = embed_texts([query_text])[0].reshape(1,-1)
+    try:
+        qv = embed_texts([query_text])[0].reshape(1,-1)
+    except Exception:
+        return []
+
     if qv.shape[1] != index.d:
         # Model/dimensi berubah dibanding index yg sudah ada
         # Lebih aman kembalikan kosong dan arahkan user untuk rebuild
