@@ -1,8 +1,8 @@
 # AI MoodBand
 
-AI MoodBand is a local Flask web app for mood check-ins, curhat-style emotional reflection, memory-aware coaching, optional image context, and daily conversation summaries. The app is written for Indonesian users and uses Gemini models for response generation, summarization, and embeddings.
+## About
 
-This project is a non-clinical emotional support prototype. It can help users reflect, organize feelings, and decide small next steps, but it is not a substitute for professional mental health care.
+AI MoodBand is a local Flask web app for mood check-ins, curhat-style reflection, memory-aware coaching, optional image context, and daily conversation summaries for Indonesian users. It uses Gemini models to generate responses, summaries, and embeddings, and it is a non-clinical emotional support prototype that helps users reflect and choose small next steps, not a substitute for professional mental health care.
 
 ## Features
 
