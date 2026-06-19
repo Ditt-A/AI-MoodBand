@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7f8f5">
+  <title>Analytics — AI MoodBand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <div class="sidebar-head">
+        <a class="brand" href="/" aria-label="AI MoodBand beranda">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+          </span>
+          <span>AI MoodBand</span>
+        </a>
+        <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="Tutup menu">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <a class="new-chat" href="/chat?new=1">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Percakapan baru</span>
+        <kbd>Ctrl K</kbd>
+      </a>
+
+      {% if sidebar_conversations %}
+        <section class="conversation-history" aria-label="Riwayat percakapan">
+          <p class="nav-label">Percakapan</p>
+          <div class="conversation-list">
+            {% for conversation in sidebar_conversations %}
+              <a class="conversation-link" href="/chat?conversation={{ conversation.id }}">
+                <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+                <span class="conversation-title">{{ conversation.title }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <nav class="sidebar-nav">
+        <p class="nav-label">Ruang utama</p>
+        <a class="nav-item" href="/chat">
+          <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+          <span>Ruang curhat</span>
+        </a>
+        <a class="nav-item" href="/chat?checkin=1">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c2 2 5 2 7 0"/></svg>
+          <span>Mood check-in</span>
+        </a>
+        <a class="nav-item" href="/image-analysis">
+          <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
+          <span>Analisis gambar</span>
+        </a>
+
+        <p class="nav-label tools-label">Tools</p>
+        <a class="nav-item active" href="/analytics">
+          <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+          <span>Analytics</span>
+        </a>
+        <a class="nav-item" href="/daily-summary">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h10M4 19h7"/><path d="m17 16 1.2 2.4L21 19l-2 2 .5 2.5"/></svg>
+          <span>Ringkasan harian</span>
+        </a>
+        <a class="nav-item" href="/memories">
+          <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-4.6 3A4 4 0 0 0 5 13.2 4 4 0 0 0 9 20h3V3Z"/><path d="M12 7h3a3 3 0 0 1 2.7 4.3A3.5 3.5 0 0 1 16 18h-4"/></svg>
+          <span>Memori percakapan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="privacy-card" id="analytics-privacy">
+        <span class="privacy-icon"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg></span>
+        <div><strong>Tersimpan lokal</strong><p>Grafik dibuat dari metadata di perangkat ini.</p></div>
+      </div>
+      <div class="sidebar-profile">
+        <span class="avatar avatar-user">D</span>
+        <div><strong>Demo User</strong><span>Ruang pribadi</span></div>
+        <span class="online-dot" title="Online"></span>
+      </div>
+    </aside>
+
+    <button class="sidebar-overlay" type="button" data-sidebar-close aria-label="Tutup menu"></button>
+
+    <main class="analytics-main">
+      <header class="analytics-header">
+        <div class="header-left">
+          <button class="icon-button menu-button" type="button" data-sidebar-open aria-label="Buka menu">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <div>
+            <span class="analytics-eyebrow">Insight pribadi</span>
+            <h1>Analytics</h1>
+          </div>
+        </div>
+        <span class="analytics-period">7 hari terakhir</span>
+      </header>
+
+      <div class="analytics-scroll">
+        <div class="analytics-shell">
+          <section class="analytics-intro">
+            <div>
+              <p class="analytics-kicker">Pola, bukan penilaian</p>
+              <h2>Lihat ritme emosimu<br>dengan lebih jernih.</h2>
+            </div>
+            <p>Grafik ini dirangkum dari check-in lokalmu. Gunakan sebagai bahan refleksi, bukan diagnosis atau ukuran mutlak keadaanmu.</p>
+          </section>
+
+          {% if analytics.has_data %}
+            <section class="analytics-metrics" aria-label="Ringkasan analytics">
+              <article class="analytics-metric">
+                <span class="metric-icon metric-icon-green"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
+                <div><small>Rata-rata stres</small><strong>{{ analytics.average_stress }}<em>/100</em></strong></div>
+              </article>
+              <article class="analytics-metric">
+                <span class="metric-icon metric-icon-blue"><svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg></span>
+                <div><small>Check-in terkirim</small><strong>{{ analytics.total_messages }}</strong></div>
+              </article>
+              <article class="analytics-metric">
+                <span class="metric-icon metric-icon-amber">◌</span>
+                <div><small>Emosi teratas</small><strong class="metric-word">{{ analytics.top_emotion }}</strong></div>
+              </article>
+              <article class="analytics-metric">
+                <span class="metric-icon metric-icon-violet">#</span>
+                <div><small>Topik teratas</small><strong class="metric-word">{{ analytics.top_topic }}</strong></div>
+              </article>
+            </section>
+
+            <section class="analytics-grid-main">
+              <article class="analytics-panel stress-panel">
+                <div class="analytics-panel-head">
+                  <div><span class="panel-overline">Tren mingguan</span><h3>Intensitas stres</h3></div>
+                  <span class="peak-pill">Puncak {{ analytics.highest_stress }}/100</span>
+                </div>
+                <div class="stress-chart" role="img" aria-label="Grafik stres tujuh hari terakhir">
+                  <div class="chart-guides"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div>
+                  <div class="stress-bars">
+                    {% for point in analytics.stress_trend %}
+                      <div class="stress-column" title="{{ point.day }}, {{ point.label }}: {{ point.average }}">
+                        <div class="stress-value">{{ point.average if point.count else '–' }}</div>
+                        <div class="stress-track"><span style="--bar-height: {{ point.average }}%"></span></div>
+                        <strong>{{ point.day }}</strong><small>{{ point.label }}</small>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </article>
+
+              <article class="analytics-panel emotion-panel">
+                <div class="analytics-panel-head">
+                  <div><span class="panel-overline">Distribusi</span><h3>Emosi yang muncul</h3></div>
+                </div>
+                <div class="breakdown-list">
+                  {% for item in analytics.emotions %}
+                    <div class="breakdown-row">
+                      <div class="breakdown-label"><strong>{{ item.name }}</strong><span>{{ item.count }}×</span></div>
+                      <div class="breakdown-track"><span style="--item-width: {{ item.percent }}%"></span></div>
+                    </div>
+                  {% else %}
+                    <p class="analytics-muted">Belum ada emosi yang tercatat.</p>
+                  {% endfor %}
+                </div>
+              </article>
+            </section>
+
+            <section class="analytics-grid-bottom">
+              <article class="analytics-panel">
+                <div class="analytics-panel-head">
+                  <div><span class="panel-overline">Konteks percakapan</span><h3>Topik yang sering hadir</h3></div>
+                </div>
+                <div class="topic-cloud">
+                  {% for item in analytics.topics %}
+                    <span>{{ item.name }} <b>{{ item.count }}</b></span>
+                  {% else %}
+                    <p class="analytics-muted">Belum ada topik yang tercatat.</p>
+                  {% endfor %}
+                </div>
+              </article>
+              <article class="analytics-panel reflection-panel">
+                <span class="reflection-icon"><svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-4 12.7V20h8v-4.3A7 7 0 0 0 12 3Z"/><path d="M9 20h6M10 23h4"/></svg></span>
+                <div><span class="panel-overline">Catatan lembut</span><h3>Angka hanya membuka percakapan.</h3><p>Kalau ada pola yang terasa penting, bawa kembali ke ruang chat dan ceritakan dengan bahasamu sendiri.</p></div>
+                <a href="/chat">Bicarakan sekarang <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg></a>
+              </article>
+            </section>
+          {% else %}
+            <section class="analytics-empty">
+              <span><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
+              <h3>Belum ada pola untuk ditampilkan</h3>
+              <p>Kirim beberapa check-in di ruang chat. Grafik akan tumbuh dari percakapanmu, tanpa input tambahan.</p>
+              <a href="/chat?checkin=1">Mulai mood check-in</a>
+            </section>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll('[data-sidebar-open]').forEach(button => {
+      button.addEventListener('click', () => document.body.classList.add('sidebar-open'));
+    });
+    document.querySelectorAll('[data-sidebar-close]').forEach(button => {
+      button.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+    });
+    document.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        window.location.href = '/chat?new=1';
+      }
+    });
+  </script>
+</body>
+</html>

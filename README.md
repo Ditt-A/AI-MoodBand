@@ -11,6 +11,9 @@ This project is a non-clinical emotional support prototype. It can help users re
 - Optional image upload for extra context.
 - Listen-first response style that asks clarifying questions before giving actions.
 - Suggested self-care actions when appropriate, such as breathing, journaling, grounding, breaks, and reach-out steps.
+- Optimistic chat UI with typing feedback while the model works in the background.
+- Separate saved conversation threads with automatic titles and local history.
+- A local analytics dashboard for stress trends, emotions, and conversation topics.
 - Local memory store for recent turns and daily summaries.
 - Daily summary generation with key points, follow-up prompts, and safety flag.
 - Modern Flask UI with responsive styling.
@@ -20,8 +23,9 @@ This project is a non-clinical emotional support prototype. It can help users re
 - Python
 - Flask
 - Google GenAI SDK
-- Gemini `gemini-2.5-flash`
-- Gemini embedding model `text-embedding-004`
+- Gemini `gemini-3.1-flash-lite` for chat and analysis
+- Gemini `gemini-2.5-flash` for daily summaries
+- Gemini embedding model `gemini-embedding-001`
 - FAISS CPU for local vector indexing
 - NumPy
 - HTML and CSS templates
@@ -37,7 +41,10 @@ AI-MoodBand/
 +-- requirements.txt       # Python dependencies
 +-- API.env.example        # Environment variable template
 +-- templates/
-|   +-- main.html          # Main UI template
+|   +-- landing.html       # Public-facing landing page and mood entry flow
+|   +-- main.html          # Real-time chat interface
+|   +-- analytics.html     # Local analytics dashboard
+|   +-- tools.html         # Image, summary, and memory tool pages
 +-- static/
 |   +-- css/
 |       +-- style.css      # App styling
@@ -115,6 +122,7 @@ Conversation memory is stored locally in the `data/` folder:
 
 - `data/memory_meta.pkl` stores metadata and message text.
 - `data/memory.index` stores the FAISS vector index when embeddings are available.
+- `data/conversations.pkl` stores conversation titles and thread timestamps.
 
 The `data/` folder is ignored by git because it contains local runtime data. Delete the folder if you want to reset local memory.
 

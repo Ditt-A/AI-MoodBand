@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f3f7f2">
+  <title>AI MoodBand — Ruang untuk merasa lebih ringan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="landing-body">
+  <div class="landing-bg landing-bg-a"></div>
+  <div class="landing-bg landing-bg-b"></div>
+
+  <div class="landing-page">
+    <nav class="landing-nav" aria-label="Navigasi landing page">
+      <a class="landing-brand" href="/">
+        <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span>
+        <span>AI MoodBand</span>
+      </a>
+      <div class="landing-links">
+        <a href="#cara-kerja">Cara kerja</a>
+        <a href="#privasi">Privasi</a>
+      </div>
+      <button class="landing-nav-cta" type="button" data-enter-chat>Masuk ke ruang chat</button>
+    </nav>
+
+    <main>
+      <section class="landing-hero">
+        <div class="landing-hero-copy">
+          <span class="landing-pill"><i></i> Teman refleksi yang selalu siap mendengar</span>
+          <h1>Kamu boleh datang<br>dengan perasaan yang<br><em>belum rapi.</em></h1>
+          <p>MoodBand membantu kamu mengurai isi kepala, mengenali pola emosi, dan menemukan satu langkah kecil—tanpa menghakimi dan tanpa terburu-buru.</p>
+          <div class="landing-hero-actions">
+            <button class="landing-primary-cta" type="button" data-enter-chat>
+              Mulai cerita
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+            </button>
+            <span><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg> Percakapan tersimpan lokal</span>
+          </div>
+          <div class="landing-proof">
+            <div class="proof-avatars"><span>😌</span><span>🌿</span><span>💬</span></div>
+            <p><strong>Mulai dalam beberapa detik.</strong><br>Tidak perlu menyiapkan kata-kata sempurna.</p>
+          </div>
+        </div>
+
+        <div class="landing-visual" aria-label="Contoh percakapan MoodBand">
+          <div class="visual-orbit visual-orbit-one"></div>
+          <div class="visual-orbit visual-orbit-two"></div>
+          <div class="landing-chat-card">
+            <div class="landing-chat-head">
+              <div class="landing-chat-person">
+                <span class="avatar avatar-ai"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span>
+                <div><strong>MoodBand</strong><small><i></i> siap mendengar</small></div>
+              </div>
+              <span class="landing-chat-lock"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg></span>
+            </div>
+            <div class="landing-chat-day"><span>Hari ini</span></div>
+            <div class="landing-sample-message sample-user">
+              <span class="avatar avatar-user">D</span>
+              <div><small>Kamu · baru saja</small><p>Aku capek, tapi rasanya sulit menjelaskan kenapa.</p></div>
+            </div>
+            <div class="landing-sample-message sample-ai">
+              <span class="avatar avatar-ai"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span>
+              <div><small>MoodBand · sekarang</small><p>Kedengarannya kamu sudah membawa banyak hal cukup lama. Kita tidak harus memahami semuanya sekaligus.</p><strong>Bagian mana yang paling terasa berat hari ini?</strong></div>
+            </div>
+            <div class="landing-fake-composer"><span>Ceritakan apa yang kamu rasakan...</span><b><svg viewBox="0 0 24 24"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg></b></div>
+          </div>
+          <div class="landing-float-card float-mood"><span>😌</span><div><small>Mood hari ini</small><strong>Pelan-pelan</strong></div></div>
+          <div class="landing-float-card float-private"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg><div><small>Privasi</small><strong>Tersimpan lokal</strong></div></div>
+        </div>
+      </section>
+
+      <section class="landing-values" id="cara-kerja">
+        <article><span>01</span><div><strong>Check-in perasaanmu</strong><p>Pilih emoji yang paling dekat dengan keadaanmu sekarang.</p></div></article>
+        <article><span>02</span><div><strong>Cerita dengan caramu</strong><p>Tulis pendek, panjang, atau tambahkan gambar sebagai konteks.</p></div></article>
+        <article><span>03</span><div><strong>Lihat pola perlahan</strong><p>Ringkasan dan analytics membantu refleksi tanpa memberi label.</p></div></article>
+      </section>
+
+      <section class="landing-privacy" id="privasi">
+        <div class="landing-privacy-icon"><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.7 3.2 8 7.5 9.5 4.3-1.5 7.5-4.8 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <div><span>Dirancang dengan privasi sebagai dasar</span><h2>Ceritamu tetap menjadi milikmu.</h2><p>Memori, ringkasan, dan metadata percakapan disimpan di perangkat lokal. Kamu memegang kendali atas ruang refleksimu.</p></div>
+        <button type="button" data-enter-chat>Mulai ruang pribadimu <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg></button>
+      </section>
+    </main>
+
+    <footer class="landing-footer">
+      <span>© 2026 AI MoodBand</span>
+      <p>Teman refleksi non-klinis. Bukan pengganti bantuan profesional.</p>
+    </footer>
+  </div>
+
+  <div class="mood-modal landing-mood-modal" id="landing-mood-modal" aria-hidden="true">
+    <div class="mood-modal-glow mood-modal-glow-a"></div>
+    <div class="mood-modal-glow mood-modal-glow-b"></div>
+    <section class="mood-dialog" role="dialog" aria-modal="true" aria-labelledby="landing-mood-title">
+      <div class="mood-dialog-top">
+        <span class="mood-dialog-brand"><span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span>Mood check-in</span>
+        <button class="mood-close" type="button" data-landing-mood-close aria-label="Tutup"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="mood-dialog-copy">
+        <span class="mood-step">Sebelum kita mulai</span>
+        <h2 id="landing-mood-title">Kamu datang dengan<br>perasaan seperti apa?</h2>
+        <p>Pilih yang paling mendekati. Kamu bisa menggantinya kapan saja.</p>
+      </div>
+      <div class="mood-card-grid" role="radiogroup" aria-label="Pilih mood">
+        <label class="mood-card mood-card-normal"><input type="radio" name="landing-mood" value="normal" checked><span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span><span class="mood-card-emoji">😌</span><span class="mood-card-copy"><strong>Normal</strong><small>Stabil, tenang, atau biasa saja</small></span></label>
+        <label class="mood-card mood-card-sad"><input type="radio" name="landing-mood" value="sedih"><span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span><span class="mood-card-emoji">😔</span><span class="mood-card-copy"><strong>Sedih</strong><small>Berat, kosong, atau ingin didengar</small></span></label>
+        <label class="mood-card mood-card-angry"><input type="radio" name="landing-mood" value="marah"><span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span><span class="mood-card-emoji">😤</span><span class="mood-card-copy"><strong>Marah</strong><small>Kesal, tegang, atau penuh energi</small></span></label>
+        <label class="mood-card mood-card-happy"><input type="radio" name="landing-mood" value="senang"><span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span><span class="mood-card-emoji">😊</span><span class="mood-card-copy"><strong>Senang</strong><small>Ringan, hangat, atau bersemangat</small></span></label>
+      </div>
+      <div class="mood-dialog-actions landing-mood-actions">
+        <a class="mood-action-secondary" href="/chat?new=1&amp;mood=normal">Lewati dulu</a>
+        <button class="mood-action-primary" type="button" id="landing-mood-continue">Masuk ke ruang chat <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg></button>
+      </div>
+      <p class="mood-dialog-note">Pilihan ini hanya membantu menyesuaikan nada percakapan pertama.</p>
+    </section>
+  </div>
+
+  <script>
+    const moodModal = document.getElementById('landing-mood-modal');
+    const openMood = () => {
+      document.body.classList.add('mood-modal-open');
+      moodModal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.querySelector('[data-landing-mood-close]').focus(), 180);
+    };
+    const closeMood = () => {
+      document.body.classList.remove('mood-modal-open');
+      moodModal.setAttribute('aria-hidden', 'true');
+    };
+    document.querySelectorAll('[data-enter-chat]').forEach(button => button.addEventListener('click', openMood));
+    document.querySelectorAll('[data-landing-mood-close]').forEach(button => button.addEventListener('click', closeMood));
+    moodModal.addEventListener('click', event => { if (event.target === moodModal) closeMood(); });
+    document.getElementById('landing-mood-continue').addEventListener('click', () => {
+      const mood = document.querySelector('input[name="landing-mood"]:checked')?.value || 'normal';
+      window.location.href = `/chat?new=1&mood=${encodeURIComponent(mood)}`;
+    });
+
+    const landingNav = document.querySelector('.landing-nav');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const revealTargets = document.querySelectorAll(
+      '.landing-pill, .landing-hero-copy h1, .landing-hero-copy > p, .landing-hero-actions, .landing-proof, .landing-values article, .landing-privacy, .landing-footer'
+    );
+    revealTargets.forEach(element => element.classList.add('landing-reveal'));
+
+    if ('IntersectionObserver' in window && !reducedMotion) {
+      const revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('in-view');
+          revealObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
+      revealTargets.forEach(element => revealObserver.observe(element));
+      requestAnimationFrame(() => document.body.classList.add('reveal-ready'));
+    } else {
+      revealTargets.forEach(element => element.classList.add('in-view'));
+    }
+
+    let scrollFrame = null;
+    const updateScrollEffects = () => {
+      const scrollTop = window.scrollY;
+      if (reducedMotion) {
+        landingNav.classList.toggle('scrolled', scrollTop > 18);
+        scrollFrame = null;
+        return;
+      }
+      const mobileFactor = window.innerWidth < 760 ? 0.025 : 0.065;
+      document.body.style.setProperty('--hero-scroll', `${Math.min(scrollTop * mobileFactor, 38)}px`);
+      document.body.style.setProperty('--visual-scroll', `${Math.max(scrollTop * -mobileFactor * .7, -30)}px`);
+      landingNav.classList.toggle('scrolled', scrollTop > 18);
+      scrollFrame = null;
+    };
+    window.addEventListener('scroll', () => {
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScrollEffects);
+    }, { passive: true });
+    updateScrollEffects();
+
+    if (!reducedMotion && window.matchMedia('(pointer: fine)').matches) {
+      window.addEventListener('pointermove', event => {
+        const x = (event.clientX / window.innerWidth - .5) * 2;
+        const y = (event.clientY / window.innerHeight - .5) * 2;
+        document.body.style.setProperty('--parallax-x', `${x * 9}px`);
+        document.body.style.setProperty('--parallax-y', `${y * 7}px`);
+        document.body.style.setProperty('--parallax-inverse-x', `${x * -13}px`);
+        document.body.style.setProperty('--parallax-inverse-y', `${y * -10}px`);
+      }, { passive: true });
+      document.documentElement.addEventListener('mouseleave', () => {
+        ['--parallax-x', '--parallax-y', '--parallax-inverse-x', '--parallax-inverse-y']
+          .forEach(property => document.body.style.setProperty(property, '0px'));
+      });
+    }
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMood(); });
+  </script>
+</body>
+</html>

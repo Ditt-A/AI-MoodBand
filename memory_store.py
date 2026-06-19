@@ -1,5 +1,6 @@
 # memory_store.py
 import os, sys, json, time, uuid, pickle, numpy as np
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -22,10 +23,10 @@ except Exception as e:
     _GENAI_IMPORT_ERROR = e
 
 EMB_API_KEY = _read_api_key("API_KEY_TODATABASE")
-EMB_MODEL = "text-embedding-004"
-client = genai.Client(api_key=EMB_API_KEY, http_options={'api_version':'v1alpha'}) if (EMB_API_KEY and genai is not None) else None
+EMB_MODEL = "gemini-embedding-001"
+client = genai.Client(api_key=EMB_API_KEY, http_options={'api_version':'v1beta'}) if (EMB_API_KEY and genai is not None) else None
 
-def embed_texts(texts: List[str], task_type="retrieval_document") -> np.ndarray:
+def embed_texts(texts: List[str]) -> np.ndarray:
     if genai is None:
         base = (
             "Library 'google-genai' tidak bisa diimport pada interpreter ini. "
@@ -41,13 +42,15 @@ def embed_texts(texts: List[str], task_type="retrieval_document") -> np.ndarray:
     if not isinstance(texts, list):
         texts = [texts]
 
-    res = client.models.embed_content(
-        model=EMB_MODEL,
-        contents=texts,
-    )
+    # Panggil per teks agar setiap memory row selalu memiliki tepat satu vektor.
+    vecs = []
+    for text in texts:
+        res = client.models.embed_content(
+            model=EMB_MODEL,
+            contents=text,
+        )
+        vecs.append(res.embeddings[0].values)
 
-    # Ambil vektor dari res.embeddings
-    vecs = [e.values for e in res.embeddings]
     X = np.array(vecs, dtype="float32")
     X /= np.clip(np.linalg.norm(X, axis=1, keepdims=True), 1e-12, None)
     return X
@@ -64,14 +67,16 @@ except ImportError as e:
 DATA_DIR = os.path.join(BASE_DIR, "data")
 INDEX_PATH = os.path.join(DATA_DIR, "memory.index")
 META_PATH  = os.path.join(DATA_DIR, "memory_meta.pkl")
+CONVERSATION_PATH = os.path.join(DATA_DIR, "conversations.pkl")
 
 # in-memory structures
 index = None  # faiss.IndexFlatIP
 metas: Dict[int, Dict[str, Any]] = {}  # row_id -> payload
+conversations: Dict[str, Dict[str, Any]] = {}
 row_counter = 0
 
 def _ensure_store():
-    global index, metas, row_counter
+    global index, metas, conversations, row_counter
     os.makedirs(DATA_DIR, exist_ok=True)
 
     if os.path.exists(META_PATH):
@@ -87,6 +92,36 @@ def _ensure_store():
         metas = {}
         row_counter = 0
 
+    if os.path.exists(CONVERSATION_PATH):
+        with open(CONVERSATION_PATH, "rb") as f:
+            conversations = pickle.load(f)
+    else:
+        conversations = {}
+
+    # Migrasikan percakapan lama yang belum memiliki thread tanpa menghapus data.
+    legacy_groups: Dict[str, list[dict]] = {}
+    for row in metas.values():
+        if row.get("role") not in {"user", "coach"}:
+            continue
+        if not row.get("conversation_id"):
+            legacy_id = f"legacy-{row.get('user_id', 'demo_user')}"
+            row["conversation_id"] = legacy_id
+            legacy_groups.setdefault(legacy_id, []).append(row)
+    for legacy_id, rows in legacy_groups.items():
+        if legacy_id in conversations:
+            continue
+        rows.sort(key=lambda item: item.get("ts", ""))
+        user_id = rows[0].get("user_id", "demo_user")
+        first_user = next((item.get("text", "") for item in rows if item.get("role") == "user"), "")
+        title = _conversation_title(first_user) if first_user else "Percakapan sebelumnya"
+        conversations[legacy_id] = {
+            "id": legacy_id,
+            "user_id": user_id,
+            "title": title,
+            "created_at": rows[0].get("ts", ""),
+            "updated_at": rows[-1].get("ts", ""),
+        }
+
 
 def _persist():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -94,8 +129,71 @@ def _persist():
         faiss.write_index(index, INDEX_PATH)
     with open(META_PATH, "wb") as f:
         pickle.dump(metas, f)
+    with open(CONVERSATION_PATH, "wb") as f:
+        pickle.dump(conversations, f)
 
-def upsert_memory(user_id: str, role: str, text: str, meta: Optional[Dict[str, Any]]=None):
+
+def _conversation_title(text: str) -> str:
+    clean = " ".join((text or "").split())
+    if not clean:
+        return "Percakapan baru"
+    return clean if len(clean) <= 44 else clean[:43].rstrip() + "…"
+
+
+def create_conversation(user_id: str, title: str = "Percakapan baru") -> dict:
+    _ensure_store()
+    conversation_id = str(uuid.uuid4())
+    now = datetime.now(timezone(timedelta(hours=7))).isoformat()
+    conversations[conversation_id] = {
+        "id": conversation_id,
+        "user_id": user_id,
+        "title": _conversation_title(title),
+        "created_at": now,
+        "updated_at": now,
+    }
+    _persist()
+    return dict(conversations[conversation_id])
+
+
+def get_conversation(user_id: str, conversation_id: str | None) -> Optional[dict]:
+    if not conversation_id:
+        return None
+    _ensure_store()
+    conversation = conversations.get(conversation_id)
+    if not conversation or conversation.get("user_id") != user_id:
+        return None
+    return dict(conversation)
+
+
+def list_conversations(user_id: str, limit: int = 30) -> list[dict]:
+    _ensure_store()
+    rows = [item for item in conversations.values() if item.get("user_id") == user_id]
+    rows.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
+    return [dict(item) for item in rows[:max(1, min(int(limit), 100))]]
+
+
+def _touch_conversation(user_id: str, conversation_id: str, role: str, text: str, timestamp: str):
+    conversation = conversations.get(conversation_id)
+    if not conversation or conversation.get("user_id") != user_id:
+        conversations[conversation_id] = {
+            "id": conversation_id,
+            "user_id": user_id,
+            "title": "Percakapan baru",
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        conversation = conversations[conversation_id]
+    conversation["updated_at"] = timestamp
+    if role == "user" and conversation.get("title") == "Percakapan baru":
+        conversation["title"] = _conversation_title(text)
+
+def upsert_memory(
+    user_id: str,
+    role: str,
+    text: str,
+    meta: Optional[Dict[str, Any]]=None,
+    conversation_id: str | None = None,
+):
     """Simpan satu potongan memori percakapan (user/coach)."""
     _ensure_store()
 
@@ -126,13 +224,19 @@ def upsert_memory(user_id: str, role: str, text: str, meta: Optional[Dict[str, A
                 filler = np.zeros((1, index.d), dtype="float32")
                 index.add(filler)
 
+    timestamp = datetime.now(timezone(timedelta(hours=7))).isoformat()
+    if role in {"user", "coach"}:
+        conversation_id = conversation_id or f"legacy-{user_id}"
+        _touch_conversation(user_id, conversation_id, role, text, timestamp)
+
     metas[row_counter] = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "role": role,
         "text": text,
-        "ts": datetime.now(timezone(timedelta(hours=7))).isoformat(),
+        "ts": timestamp,
         "indexed": use_vector_index,
+        **({"conversation_id": conversation_id} if conversation_id else {}),
         **(meta or {})
     }
     row_counter += 1
@@ -170,6 +274,24 @@ def get_daily_summary(user_id: str, date: str | None = None) -> Optional[Dict[st
     return cand[0]
 
 
+def list_daily_summaries(user_id: str, limit: int = 14) -> list[dict]:
+    """Daftar ringkasan terbaru untuk halaman ringkasan harian."""
+    _ensure_store()
+    rows = [
+        row for row in metas.values()
+        if row.get("user_id") == user_id and row.get("is_summary")
+    ]
+    rows.sort(key=lambda row: row.get("ts", ""), reverse=True)
+    return [
+        {
+            "text": row.get("text", ""),
+            "date": row.get("summary_date") or row.get("ts", "")[:10],
+            "timestamp": row.get("ts", ""),
+        }
+        for row in rows[:limit]
+    ]
+
+
 def retrieve_memories(user_id: str, query_text: str, k: int = 4) -> List[Dict[str, Any]]:
     _ensure_store()
     if index is None or len(metas) == 0:
@@ -200,9 +322,18 @@ def retrieve_memories(user_id: str, query_text: str, k: int = 4) -> List[Dict[st
     results.sort(key=lambda x: x[0], reverse=True)
     return [m for _, m in results[:k]]
 
-def list_recent_messages(user_id: str, limit: int = 8) -> list[dict]:
+def list_recent_messages(
+    user_id: str,
+    limit: int = 8,
+    conversation_id: str | None = None,
+) -> list[dict]:
     _ensure_store()
-    rows = [m for m in metas.values() if m["user_id"]==user_id and m["role"] in ("user","coach")]
+    rows = [
+        m for m in metas.values()
+        if m["user_id"] == user_id
+        and m["role"] in ("user", "coach")
+        and (conversation_id is None or m.get("conversation_id") == conversation_id)
+    ]
     rows.sort(key=lambda m: m["ts"], reverse=True)
     rows = rows[:limit]
     rows.reverse()
@@ -214,6 +345,108 @@ def list_today_messages(user_id: str) -> list[dict]:
     rows = [m for m in metas.values() if m["user_id"]==user_id and m["role"] in ("user","coach") and m["ts"][:10]==today]
     rows.sort(key=lambda m: m["ts"])
     return [{"role": r["role"], "text": r["text"], "timestamp": r["ts"]} for r in rows]
+
+
+def list_memory_records(user_id: str, limit: int = 60) -> list[dict]:
+    """Percakapan terbaru beserta metadata yang aman ditampilkan di UI lokal."""
+    _ensure_store()
+    rows = [
+        row for row in metas.values()
+        if row.get("user_id") == user_id and row.get("role") in {"user", "coach"}
+    ]
+    rows.sort(key=lambda row: row.get("ts", ""), reverse=True)
+    return [
+        {
+            "role": row.get("role", "user"),
+            "text": row.get("text", ""),
+            "timestamp": row.get("ts", ""),
+            "mood": row.get("mood"),
+            "emotions": row.get("emotions") or [],
+            "stress": row.get("stress"),
+            "topics": row.get("topics") or [],
+            "opening": bool(row.get("opening")),
+            "conversation_id": row.get("conversation_id"),
+        }
+        for row in rows[:max(1, min(int(limit), 200))]
+    ]
+
+
+def get_analytics(user_id: str, days: int = 7) -> dict:
+    """Agregasi metadata lokal untuk dashboard, tanpa panggilan model tambahan."""
+    _ensure_store()
+    days = max(1, min(int(days), 30))
+    tz_wib = timezone(timedelta(hours=7))
+    today = datetime.now(tz_wib).date()
+    dates = [today - timedelta(days=offset) for offset in reversed(range(days))]
+    date_keys = {day.isoformat() for day in dates}
+
+    rows = [
+        row for row in metas.values()
+        if row.get("user_id") == user_id and row.get("ts", "")[:10] in date_keys
+    ]
+    coach_rows = [row for row in rows if row.get("role") == "coach"]
+    user_rows = [row for row in rows if row.get("role") == "user"]
+
+    emotion_counts = Counter()
+    topic_counts = Counter()
+    mood_counts = Counter()
+    risk_counts = Counter()
+    all_stress = []
+
+    for row in coach_rows:
+        emotion_counts.update(str(item) for item in (row.get("emotions") or []))
+        topic_counts.update(str(item) for item in (row.get("topics") or []))
+        risk_counts[str(row.get("risk") or "none")] += 1
+        stress = row.get("stress")
+        if isinstance(stress, (int, float)):
+            all_stress.append(float(stress))
+
+    for row in user_rows:
+        mood_counts[str(row.get("mood") or "normal")] += 1
+
+    stress_trend = []
+    for day in dates:
+        key = day.isoformat()
+        daily_rows = [row for row in coach_rows if row.get("ts", "")[:10] == key]
+        values = [
+            float(row["stress"]) for row in daily_rows
+            if isinstance(row.get("stress"), (int, float))
+        ]
+        stress_trend.append({
+            "date": key,
+            "label": day.strftime("%d/%m"),
+            "day": ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"][day.weekday()],
+            "average": round(sum(values) / len(values)) if values else 0,
+            "maximum": round(max(values)) if values else 0,
+            "count": len(daily_rows),
+        })
+
+    def _breakdown(counter: Counter, limit: int = 6) -> list[dict]:
+        total = sum(counter.values())
+        return [
+            {
+                "name": name.replace("_", " ").title(),
+                "count": count,
+                "percent": round((count / total) * 100) if total else 0,
+            }
+            for name, count in counter.most_common(limit)
+        ]
+
+    return {
+        "days": days,
+        "total_messages": len(user_rows),
+        "total_responses": len(coach_rows),
+        "average_stress": round(sum(all_stress) / len(all_stress)) if all_stress else 0,
+        "highest_stress": round(max(all_stress)) if all_stress else 0,
+        "top_emotion": emotion_counts.most_common(1)[0][0].title() if emotion_counts else "Belum ada",
+        "top_topic": topic_counts.most_common(1)[0][0].replace("_", " ").title() if topic_counts else "Belum ada",
+        "stress_trend": stress_trend,
+        "emotions": _breakdown(emotion_counts),
+        "topics": _breakdown(topic_counts),
+        "moods": _breakdown(mood_counts, limit=4),
+        "risk_alerts": sum(count for risk, count in risk_counts.items() if risk in {"high", "critical"}),
+        "has_data": bool(user_rows or coach_rows),
+    }
 
 def today_has_summary(user_id: str) -> bool:
     _ensure_store()

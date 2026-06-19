@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7f8f5">
+  <title>{% if tool == 'image' %}Analisis Gambar{% elif tool == 'summary' %}Ringkasan Harian{% else %}Memori Percakapan{% endif %} — AI MoodBand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <div class="sidebar-head">
+        <a class="brand" href="/" aria-label="AI MoodBand beranda">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+          </span>
+          <span>AI MoodBand</span>
+        </a>
+        <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="Tutup menu">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <a class="new-chat" href="/chat?new=1">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Percakapan baru</span>
+        <kbd>Ctrl K</kbd>
+      </a>
+
+      {% if sidebar_conversations %}
+        <section class="conversation-history" aria-label="Riwayat percakapan">
+          <p class="nav-label">Percakapan</p>
+          <div class="conversation-list">
+            {% for conversation in sidebar_conversations %}
+              <a class="conversation-link" href="/chat?conversation={{ conversation.id }}">
+                <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+                <span class="conversation-title">{{ conversation.title }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <nav class="sidebar-nav">
+        <p class="nav-label">Ruang utama</p>
+        <a class="nav-item" href="/chat">
+          <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+          <span>Ruang curhat</span>
+        </a>
+        <a class="nav-item" href="/chat?checkin=1">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c2 2 5 2 7 0"/></svg>
+          <span>Mood check-in</span>
+        </a>
+        <a class="nav-item {{ 'active' if tool == 'image' else '' }}" href="/image-analysis">
+          <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
+          <span>Analisis gambar</span>
+        </a>
+
+        <p class="nav-label tools-label">Tools</p>
+        <a class="nav-item" href="/analytics">
+          <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+          <span>Analytics</span>
+        </a>
+        <a class="nav-item {{ 'active' if tool == 'summary' else '' }}" href="/daily-summary">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h10M4 19h7"/><path d="m17 16 1.2 2.4L21 19l-2 2 .5 2.5"/></svg>
+          <span>Ringkasan harian</span>
+        </a>
+        <a class="nav-item {{ 'active' if tool == 'memory' else '' }}" href="/memories">
+          <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-4.6 3A4 4 0 0 0 5 13.2 4 4 0 0 0 9 20h3V3Z"/><path d="M12 7h3a3 3 0 0 1 2.7 4.3A3.5 3.5 0 0 1 16 18h-4"/></svg>
+          <span>Memori percakapan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="privacy-card">
+        <span class="privacy-icon"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg></span>
+        <div><strong>Tersimpan lokal</strong><p>Data tools tetap berada di perangkat ini.</p></div>
+      </div>
+      <div class="sidebar-profile">
+        <span class="avatar avatar-user">D</span>
+        <div><strong>Demo User</strong><span>Ruang pribadi</span></div>
+        <span class="online-dot" title="Online"></span>
+      </div>
+    </aside>
+
+    <button class="sidebar-overlay" type="button" data-sidebar-close aria-label="Tutup menu"></button>
+
+    <main class="tool-main">
+      <header class="tool-header">
+        <div class="header-left">
+          <button class="icon-button menu-button" type="button" data-sidebar-open aria-label="Buka menu">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <div>
+            <span class="tool-header-kicker">MoodBand tools</span>
+            <h1>{% if tool == 'image' %}Analisis Gambar{% elif tool == 'summary' %}Ringkasan Harian{% else %}Memori Percakapan{% endif %}</h1>
+          </div>
+        </div>
+        <a class="tool-back-chat" href="/chat">
+          <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+          Kembali ke chat
+        </a>
+      </header>
+
+      <div class="tool-scroll">
+        <div class="tool-shell">
+          {% if tool_error %}
+            <div class="tool-alert tool-alert-error">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+              <span>{{ tool_error }}</span>
+            </div>
+          {% endif %}
+
+          {% if tool == 'image' %}
+            <section class="tool-intro image-tool-intro">
+              <div>
+                <p class="tool-kicker">Konteks visual</p>
+                <h2>Ceritakan hal yang sulit<br>disampaikan lewat kata.</h2>
+              </div>
+              <p>Unggah gambar sebagai konteks tambahan. MoodBand tidak menilai penampilan dan akan fokus pada refleksi emosional yang kamu minta.</p>
+            </section>
+
+            <div class="image-tool-layout">
+              <form action="/image-analysis" method="POST" enctype="multipart/form-data" class="tool-panel image-upload-form" id="image-tool-form">
+                <div class="tool-panel-head">
+                  <div><span class="tool-overline">Langkah 1</span><h3>Pilih gambar</h3></div>
+                  <span class="file-limit">Maks. 6 MB</span>
+                </div>
+
+                <label class="image-dropzone" id="image-dropzone" for="tool-image">
+                  <input id="tool-image" type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp" required>
+                  <img id="image-preview" alt="Preview gambar yang dipilih">
+                  <span class="dropzone-empty">
+                    <span class="dropzone-icon"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 14v5h14v-5"/></svg></span>
+                    <strong>Tarik gambar ke sini</strong>
+                    <small>atau klik untuk memilih dari perangkat</small>
+                    <b>PNG · JPG · GIF · WEBP</b>
+                  </span>
+                  <button class="remove-preview" id="remove-preview" type="button" aria-label="Hapus gambar">
+                    <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                  </button>
+                </label>
+                <span class="selected-file-name" id="selected-file-name">{% if image_name %}{{ image_name }}{% endif %}</span>
+
+                <div class="tool-form-grid">
+                  <label class="tool-field">
+                    <span>Mood saat ini</span>
+                    <select name="mood">
+                      <option value="normal" {% if (prev_mood or 'normal') == 'normal' %}selected{% endif %}>😌 Normal</option>
+                      <option value="sedih" {% if prev_mood == 'sedih' %}selected{% endif %}>😔 Sedih</option>
+                      <option value="marah" {% if prev_mood == 'marah' %}selected{% endif %}>😤 Marah</option>
+                      <option value="senang" {% if prev_mood == 'senang' %}selected{% endif %}>😊 Senang</option>
+                    </select>
+                  </label>
+                  <label class="tool-field tool-field-wide">
+                    <span>Apa yang ingin kamu refleksikan? <small>Opsional</small></span>
+                    <textarea name="context" rows="4" placeholder="Contoh: Foto ini bikin aku kepikiran kejadian tadi...">{{ submitted_context or '' }}</textarea>
+                  </label>
+                </div>
+
+                <button class="tool-primary-button" type="submit">
+                  <span class="button-idle"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="M5 5l14 14M19 5 5 19"/></svg> Refleksikan gambar</span>
+                  <span class="button-loading"><i></i> Memahami konteks...</span>
+                </button>
+              </form>
+
+              <aside class="tool-panel image-result-panel">
+                <div class="tool-panel-head">
+                  <div><span class="tool-overline">Hasil refleksi</span><h3>Respons MoodBand</h3></div>
+                  {% if image_result %}<span class="result-ready"><i></i> Selesai</span>{% endif %}
+                </div>
+                {% if image_result %}
+                  <div class="image-result-message">
+                    <div class="avatar avatar-ai"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></div>
+                    <div class="message-bubble response-bubble">{{ image_result | safe }}</div>
+                  </div>
+                {% else %}
+                  <div class="tool-empty-state">
+                    <span><svg viewBox="0 0 24 24"><path d="M4 19V5h16v14Z"/><path d="m4 15 4-4 4 4 2-2 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></svg></span>
+                    <strong>Hasil akan muncul di sini</strong>
+                    <p>Pilih gambar dan tambahkan konteks jika diperlukan.</p>
+                  </div>
+                {% endif %}
+              </aside>
+            </div>
+
+          {% elif tool == 'summary' %}
+            <section class="tool-intro summary-tool-intro">
+              <div>
+                <p class="tool-kicker">Tutup hari dengan lembut</p>
+                <h2>Ambil benang merah<br>dari ceritamu hari ini.</h2>
+              </div>
+              <p>Ringkasan membantu melihat hal yang paling banyak mengambil ruang, tanpa menggantikan detail dan nuansa percakapan aslinya.</p>
+            </section>
+
+            <section class="summary-overview">
+              <div class="summary-generate-card">
+                <span class="summary-orb"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h10M4 19h7"/><path d="m17 16 1.2 2.4L21 19l-2 2 .5 2.5"/></svg></span>
+                <div>
+                  <span class="tool-overline">Percakapan hari ini</span>
+                  <h3>{{ today_message_count or 0 }} pesan siap dirangkum</h3>
+                  <p>MoodBand akan mengambil poin penting dan pertanyaan yang bisa kamu bawa ke esok hari.</p>
+                </div>
+                <form action="/summarize" method="POST" id="summary-form">
+                  <input type="hidden" name="mood" value="{{ prev_mood or 'normal' }}">
+                  <button class="tool-primary-button" type="submit" {% if not today_message_count %}disabled{% endif %}>
+                    <span class="button-idle">{{ 'Buat ringkasan baru' if latest_summary else 'Buat ringkasan pertama' }} <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg></span>
+                    <span class="button-loading"><i></i> Merangkum harimu...</span>
+                  </button>
+                </form>
+              </div>
+            </section>
+
+            <div class="summary-tool-layout">
+              <section class="tool-panel summary-current">
+                <div class="tool-panel-head">
+                  <div><span class="tool-overline">Ringkasan terbaru</span><h3>{{ latest_summary.date if latest_summary else 'Hari ini' }}</h3></div>
+                  {% if latest_summary %}<span class="result-ready"><i></i> Tersimpan</span>{% endif %}
+                </div>
+                {% if summary_result %}
+                  <div class="summary-rendered">{{ summary_result | safe }}</div>
+                {% elif latest_summary %}
+                  <div class="latest-summary-copy"><span class="quote-mark">“</span><p>{{ latest_summary.text }}</p></div>
+                {% else %}
+                  <div class="tool-empty-state compact">
+                    <span><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 11h6M9 15h6"/></svg></span>
+                    <strong>Belum ada ringkasan</strong>
+                    <p>Setelah ada percakapan hari ini, buat ringkasan pertamamu.</p>
+                  </div>
+                {% endif %}
+              </section>
+
+              <aside class="tool-panel summary-history-panel">
+                <div class="tool-panel-head"><div><span class="tool-overline">Arsip lokal</span><h3>Riwayat ringkasan</h3></div><span class="history-count">{{ summary_history|length if summary_history else 0 }}</span></div>
+                <div class="summary-history-list">
+                  {% for item in summary_history or [] %}
+                    <article class="summary-history-item">
+                      <span class="history-date"><b>{{ item.date[8:10] }}</b><small>{{ item.date[5:7] }}/{{ item.date[0:4] }}</small></span>
+                      <div><strong>{{ 'Hari ini' if loop.first else item.date }}</strong><p>{{ item.text }}</p></div>
+                    </article>
+                  {% else %}
+                    <p class="tool-muted">Arsip ringkasan masih kosong.</p>
+                  {% endfor %}
+                </div>
+              </aside>
+            </div>
+
+          {% else %}
+            <section class="tool-intro memory-tool-intro">
+              <div>
+                <p class="tool-kicker">Konteks yang tetap terjaga</p>
+                <h2>Temukan kembali<br>percakapan pentingmu.</h2>
+              </div>
+              <p>Memori ini disimpan lokal agar MoodBand bisa menjaga konteks. Cari atau saring percakapan tanpa mengirim data tambahan.</p>
+            </section>
+
+            <section class="memory-stats">
+              <article><span class="memory-stat-icon user-memory-icon">D</span><div><small>Pesan kamu</small><strong>{{ user_memory_count or 0 }}</strong></div></article>
+              <article><span class="memory-stat-icon"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span><div><small>Respons MoodBand</small><strong>{{ coach_memory_count or 0 }}</strong></div></article>
+              <article><span class="memory-stat-icon"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg></span><div><small>Penyimpanan</small><strong class="memory-local-label">Lokal</strong></div></article>
+            </section>
+
+            <section class="tool-panel memory-browser">
+              <div class="memory-toolbar">
+                <label class="memory-search">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                  <input id="memory-search" type="search" placeholder="Cari isi percakapan...">
+                </label>
+                <div class="memory-filters" role="group" aria-label="Filter memori">
+                  <button class="active" type="button" data-memory-filter="all">Semua</button>
+                  <button type="button" data-memory-filter="user">Pesan saya</button>
+                  <button type="button" data-memory-filter="coach">MoodBand</button>
+                </div>
+              </div>
+
+              <div class="memory-list" id="memory-list">
+                {% for item in memories or [] %}
+                  <article class="memory-item" data-memory-role="{{ item.role }}" data-memory-text="{{ item.text|lower }}">
+                    <div class="avatar {{ 'avatar-user' if item.role == 'user' else 'avatar-ai' }}">
+                      {% if item.role == 'user' %}D{% else %}<svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>{% endif %}
+                    </div>
+                    <div class="memory-item-body">
+                      <div class="memory-item-head">
+                        <strong>{{ 'Kamu' if item.role == 'user' else 'MoodBand' }}</strong>
+                        <time>{{ item.timestamp[8:10] }}/{{ item.timestamp[5:7] }}/{{ item.timestamp[0:4] }} · {{ item.timestamp[11:16] }}</time>
+                      </div>
+                      <p>{{ item.text }}</p>
+                      {% if item.mood or item.emotions or item.topics %}
+                        <div class="memory-tags">
+                          {% if item.mood %}<span>{{ {'normal':'😌','sedih':'😔','marah':'😤','senang':'😊'}.get(item.mood, '😌') }} {{ item.mood|capitalize }}</span>{% endif %}
+                          {% for emotion in item.emotions[:2] %}<span>{{ emotion|capitalize }}</span>{% endfor %}
+                          {% for topic in item.topics[:2] %}<span>#{{ topic|replace('_', ' ') }}</span>{% endfor %}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </article>
+                {% else %}
+                  <div class="tool-empty-state compact">
+                    <span><svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-4.6 3A4 4 0 0 0 5 13.2 4 4 0 0 0 9 20h3V3Z"/><path d="M12 7h3a3 3 0 0 1 2.7 4.3A3.5 3.5 0 0 1 16 18h-4"/></svg></span>
+                    <strong>Belum ada memori</strong>
+                    <p>Memori akan tumbuh setelah kamu mulai mengobrol.</p>
+                  </div>
+                {% endfor %}
+                <div class="memory-no-results" id="memory-no-results">
+                  <strong>Tidak ada hasil yang cocok</strong><p>Coba kata kunci atau filter lain.</p>
+                </div>
+              </div>
+            </section>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  {% include '_action_modal.html' %}
+
+  <script>
+    const actionModal = document.getElementById('action-modal');
+    const actionModalIcon = document.getElementById('action-modal-icon');
+    const actionModalTitle = document.getElementById('action-modal-title');
+    const actionModalDescription = document.getElementById('action-modal-description');
+    const actionModalDetails = document.getElementById('action-modal-details');
+    const actionStartButton = document.getElementById('action-dialog-start');
+    const actionFeedback = document.getElementById('action-dialog-feedback');
+    let selectedActionCard = null;
+    let actionLastFocused = null;
+
+    const openActionModal = card => {
+      selectedActionCard = card;
+      actionLastFocused = document.activeElement;
+      actionModalIcon.textContent = card.querySelector('.action-icon')?.textContent.trim() || '✨';
+      actionModalTitle.textContent = card.querySelector('h4')?.textContent.trim() || 'Langkah kecil';
+      actionModalDescription.textContent = card.querySelector('.action-content > p')?.textContent.trim() || 'Coba langkah ini saat kamu sudah siap.';
+      actionModalDetails.innerHTML = '';
+      const sourceDetails = card.querySelector('.action-details');
+      if (sourceDetails) {
+        [...sourceDetails.children].forEach(item => actionModalDetails.appendChild(item.cloneNode(true)));
+      }
+      actionFeedback.classList.remove('visible');
+      actionStartButton.classList.remove('confirmed');
+      actionStartButton.disabled = false;
+      actionStartButton.innerHTML = 'Aku mau coba ini <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>';
+      document.body.classList.add('action-modal-open');
+      actionModal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.querySelector('.action-dialog-close').focus(), 120);
+    };
+    const closeActionModal = () => {
+      document.body.classList.remove('action-modal-open');
+      actionModal.setAttribute('aria-hidden', 'true');
+      actionLastFocused?.focus();
+    };
+    document.addEventListener('click', event => {
+      const actionCard = event.target.closest('.action-card');
+      if (actionCard) openActionModal(actionCard);
+    });
+    document.querySelectorAll('[data-action-close]').forEach(button => button.addEventListener('click', closeActionModal));
+    actionStartButton.addEventListener('click', () => {
+      selectedActionCard?.classList.add('action-selected');
+      actionFeedback.classList.add('visible');
+      actionStartButton.classList.add('confirmed');
+      actionStartButton.disabled = true;
+      actionStartButton.textContent = 'Sudah dipilih ✓';
+    });
+
+    document.querySelectorAll('[data-sidebar-open]').forEach(button => {
+      button.addEventListener('click', () => document.body.classList.add('sidebar-open'));
+    });
+    document.querySelectorAll('[data-sidebar-close]').forEach(button => {
+      button.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+    });
+
+    const imageInput = document.getElementById('tool-image');
+    const imagePreview = document.getElementById('image-preview');
+    const dropzone = document.getElementById('image-dropzone');
+    const selectedFileName = document.getElementById('selected-file-name');
+    const removePreview = document.getElementById('remove-preview');
+    const imageForm = document.getElementById('image-tool-form');
+
+    const showPreview = file => {
+      if (!file || !file.type.startsWith('image/')) return;
+      imagePreview.src = URL.createObjectURL(file);
+      dropzone.classList.add('has-preview');
+      selectedFileName.textContent = file.name;
+    };
+    imageInput?.addEventListener('change', () => showPreview(imageInput.files[0]));
+    dropzone?.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
+    dropzone?.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+    dropzone?.addEventListener('drop', event => {
+      event.preventDefault();
+      dropzone.classList.remove('dragging');
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      imageInput.files = transfer.files;
+      showPreview(file);
+    });
+    removePreview?.addEventListener('click', event => {
+      event.preventDefault();
+      imageInput.value = '';
+      imagePreview.removeAttribute('src');
+      dropzone.classList.remove('has-preview');
+      selectedFileName.textContent = '';
+    });
+    imageForm?.addEventListener('submit', () => imageForm.classList.add('is-loading'));
+
+    const summaryForm = document.getElementById('summary-form');
+    summaryForm?.addEventListener('submit', () => summaryForm.classList.add('is-loading'));
+
+    const memorySearch = document.getElementById('memory-search');
+    const memoryItems = [...document.querySelectorAll('.memory-item')];
+    const memoryNoResults = document.getElementById('memory-no-results');
+    let memoryFilter = 'all';
+    const filterMemories = () => {
+      const query = (memorySearch?.value || '').trim().toLowerCase();
+      let visible = 0;
+      memoryItems.forEach(item => {
+        const roleMatches = memoryFilter === 'all' || item.dataset.memoryRole === memoryFilter;
+        const textMatches = !query || item.dataset.memoryText.includes(query);
+        item.hidden = !(roleMatches && textMatches);
+        if (!item.hidden) visible += 1;
+      });
+      if (memoryNoResults) memoryNoResults.classList.toggle('visible', visible === 0 && memoryItems.length > 0);
+    };
+    memorySearch?.addEventListener('input', filterMemories);
+    document.querySelectorAll('[data-memory-filter]').forEach(button => {
+      button.addEventListener('click', () => {
+        memoryFilter = button.dataset.memoryFilter;
+        document.querySelectorAll('[data-memory-filter]').forEach(item => item.classList.toggle('active', item === button));
+        filterMemories();
+      });
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && document.body.classList.contains('action-modal-open')) {
+        closeActionModal();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        window.location.href = '/chat?new=1';
+      }
+    });
+  </script>
+</body>
+</html>

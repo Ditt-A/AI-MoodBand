@@ -27,10 +27,10 @@ def _read_api_key(name: str) -> str | None:
 
 API_KEY = _read_api_key("API_KEY_GENERATOR")
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.1-flash-lite"
 client = None
 if API_KEY and genai is not None:
-    client = genai.Client(api_key=API_KEY, http_options={'api_version': 'v1alpha'})
+    client = genai.Client(api_key=API_KEY, http_options={'api_version': 'v1beta'})
 
 def _model_unavailable_reason() -> str | None:
     if genai is None:
@@ -339,83 +339,134 @@ def generate_opening(
 
 
 def _format_action_card(action) -> str:
+    action_ui = {
+        "breathing": ("Tarik napas pelan", "Luangkan sebentar untuk mengatur ritme napas.", "🌬️"),
+        "journaling": ("Tuangkan ke tulisan", "Rapikan isi kepala tanpa harus sempurna.", "✍️"),
+        "break": ("Ambil jeda", "Beri tubuh dan pikiran ruang untuk berhenti sebentar.", "☕"),
+        "grounding": ("Kembali ke sekitar", "Arahkan perhatian ke hal-hal yang ada di dekatmu.", "🌿"),
+        "sleep": ("Siapkan waktu istirahat", "Turunkan ritme agar tubuh lebih siap beristirahat.", "🌙"),
+        "prioritization": ("Pilih yang paling penting", "Kecilkan beban menjadi beberapa langkah yang jelas.", "🎯"),
+        "pomodoro": ("Fokus satu sesi", "Kerjakan satu bagian kecil, lalu beri diri waktu jeda.", "⏱️"),
+        "stretching": ("Regangkan tubuh", "Lepaskan sedikit ketegangan yang tersimpan di tubuh.", "🙆"),
+        "hydration": ("Minum air", "Mulai dari kebutuhan tubuh yang paling sederhana.", "💧"),
+        "reach_out": ("Hubungi orang tepercaya", "Kamu tidak harus membawa semuanya sendirian.", "🤝"),
+        "safety_planning": ("Susun langkah aman", "Buat rencana pendek untuk menjaga dirimu tetap aman.", "🛟"),
+        "call_emergency": ("Cari bantuan segera", "Hubungi bantuan lokal atau orang terdekat sekarang.", "☎️"),
+    }
+    detail_labels = {
+        "protocol": "Pola",
+        "duration_min": "Durasi",
+        "timer_min": "Jeda",
+        "template": "Panduan",
+        "method": "Metode",
+        "routine": "Rutinitas",
+        "cycle": "Siklus",
+        "rounds": "Putaran",
+        "amount": "Target",
+        "target": "Hubungi",
+        "steps": "Langkah",
+        "channel": "Saluran",
+        "before_burnout_tip": "Pengingat",
+    }
+
+    def _display_value(key, value) -> str:
+        if key in {"duration_min", "timer_min"}:
+            return f"{value} menit"
+        if isinstance(value, bool):
+            return "Sebelum terlalu lelah" if value else "Tidak"
+        if isinstance(value, (list, tuple)):
+            return ", ".join(str(item) for item in value)
+        if isinstance(value, dict):
+            return " · ".join(f"{k}: {v}" for k, v in value.items())
+        return str(value)
+
     if isinstance(action, dict) and len(action) == 1:
         action_name, payload = next(iter(action.items()))
-        label = escape(action_name.replace("_", " ").title())
+        action_name = str(action_name)
+        fallback_label = action_name.replace("_", " ").title()
+        label, description, icon = action_ui.get(
+            action_name,
+            (fallback_label, "Coba langkah kecil ini saat kamu sudah siap.", "✨"),
+        )
         if isinstance(payload, dict) and payload:
             details = []
             for key, value in payload.items():
-                pretty_key = escape(str(key).replace("_", " ").title())
-                pretty_value = escape(str(value))
+                pretty_key = escape(detail_labels.get(str(key), str(key).replace("_", " ").title()))
+                pretty_value = escape(_display_value(str(key), value))
                 details.append(
-                    f"<div class='action-meta-item'><span>{pretty_key}</span><strong>{pretty_value}</strong></div>"
+                    f"<span class='action-detail'><small>{pretty_key}</small><b>{pretty_value}</b></span>"
                 )
             return (
-                "<article class='action-card'>"
-                f"<h4>{label}</h4>"
-                f"<div class='action-meta'>{''.join(details)}</div>"
-                "</article>"
+                "<button type='button' class='action-card'>"
+                f"<div class='action-icon' aria-hidden='true'>{icon}</div>"
+                "<div class='action-content'>"
+                f"<h4>{escape(label)}</h4>"
+                f"<p>{escape(description)}</p>"
+                f"<div class='action-details'>{''.join(details)}</div>"
+                "</div>"
+                "<span class='action-open-icon' aria-hidden='true'>↗</span>"
+                "</button>"
             )
         return (
-            "<article class='action-card'>"
-            f"<h4>{label}</h4>"
-            f"<p>{escape(str(payload))}</p>"
-            "</article>"
+            "<button type='button' class='action-card'>"
+            f"<div class='action-icon' aria-hidden='true'>{icon}</div>"
+            f"<div class='action-content'><h4>{escape(label)}</h4>"
+            f"<p>{escape(description if payload in (None, '') else str(payload))}</p></div>"
+            "<span class='action-open-icon' aria-hidden='true'>↗</span>"
+            "</button>"
         )
 
     if isinstance(action, str):
-        return f"<article class='action-card'><p>{escape(action)}</p></article>"
+        return (
+            "<button type='button' class='action-card'>"
+            "<div class='action-icon' aria-hidden='true'>✨</div>"
+            f"<div class='action-content'><h4>Langkah kecil</h4><p>{escape(action)}</p></div>"
+            "<span class='action-open-icon' aria-hidden='true'>↗</span>"
+            "</button>"
+        )
+
+    if isinstance(action, dict):
+        action_text = " · ".join(
+            f"{str(key).replace('_', ' ').title()}: {_display_value(str(key), value)}"
+            for key, value in action.items()
+        )
+    else:
+        action_text = str(action)
 
     return (
-        "<article class='action-card'>"
-        f"<pre>{escape(json.dumps(action, ensure_ascii=False, indent=2))}</pre>"
-        "</article>"
+        "<button type='button' class='action-card'>"
+        "<div class='action-icon' aria-hidden='true'>✨</div>"
+        f"<div class='action-content'><h4>Langkah kecil</h4><p>{escape(action_text)}</p></div>"
+        "<span class='action-open-icon' aria-hidden='true'>↗</span>"
+        "</button>"
     )
 
 
 def _html_from_result(data: dict) -> str:
-    a = data.get("analysis", {})
     cc = data.get("conversation_control", {}) or {}
     reply = escape(data.get("coach_reply", ""))
     acts = data.get("suggested_actions", []) or []
-    emos = escape(", ".join(a.get("emotions", [])) or "-")
-    topik = escape(", ".join(a.get("topics", [])) or "-")
-    skor = escape(str(a.get("stress_score", "-")))
-    risiko = escape(str(a.get("risk_flag", "none")))
-    question = escape(cc.get("clarify_question", "") or "")
-    phase = escape(str(cc.get("phase", "listen")))
-    offer = "Ya" if cc.get("offer_suggestions") else "Tidak"
-
-    risk_class = f"risk-{a.get('risk_flag', 'none')}"
+    raw_reply = data.get("coach_reply", "") or ""
+    raw_question = cc.get("clarify_question", "") or ""
+    question = escape(raw_question)
 
     html = []
-    html.append("<div class='model-result'>")
-    html.append("<div class='metric-grid'>")
-    html.append(
-        f"<div class='metric-card'><span>Emosi</span><strong>{emos}</strong></div>"
-        f"<div class='metric-card'><span>Skor stres</span><strong>{skor}</strong></div>"
-        f"<div class='metric-card'><span>Topik</span><strong>{topik}</strong></div>"
-        f"<div class='metric-card {risk_class}'><span>Risiko</span><strong>{risiko}</strong></div>"
-    )
-    html.append("</div>")
-    html.append("<div class='reply-card'>")
-    html.append("<div class='reply-head'><span class='reply-kicker'>Coach</span>")
-    html.append(f"<span class='reply-chip'>phase: {phase}</span>")
-    html.append("</div>")
+    html.append("<div class='chat-response'>")
     html.append(f"<p class='reply-copy'>{reply}</p>")
-    if question:
-        html.append(f"<div class='question-callout'>{question}</div>")
-    html.append(
-        "<div class='control-row'>"
-        f"<span class='control-chip'>Tawarkan saran: {offer}</span>"
-        "</div>"
-    )
-    html.append("</div>")
+    if question and raw_question.casefold() not in raw_reply.casefold():
+        html.append(f"<p class='assistant-question'>{question}</p>")
     if acts:
-        html.append("<div class='action-section'><div class='section-label'>Aksi yang disarankan</div><div class='action-grid'>")
+        html.append(
+            "<section class='action-section'>"
+            "<div class='action-heading'>"
+            "<span class='action-heading-icon'>✦</span>"
+            "<div><strong>Langkah kecil yang bisa dicoba</strong>"
+            "<small>Pilih satu saja yang terasa paling ringan.</small></div>"
+            "</div><div class='action-grid'>"
+        )
         for act in acts[:3]:
             html.append(_format_action_card(act))
-        html.append("</div></div>")
+        html.append("</div></section>")
     html.append("</div>")
     return "".join(html)
 

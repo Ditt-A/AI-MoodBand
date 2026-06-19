@@ -2,208 +2,650 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>AI MoodBand — Curhat Space</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#101726">
+  <meta name="theme-color" content="#f7f8f5">
+  <title>AI MoodBand — Ruang Curhat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="bg-orb bg-orb-a"></div>
-  <div class="bg-orb bg-orb-b"></div>
-  <div class="bg-grid"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <div class="sidebar-head">
+        <a class="brand" href="/" aria-label="AI MoodBand beranda">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+          </span>
+          <span>AI MoodBand</span>
+        </a>
+        <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="Tutup menu">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
 
-  <main class="app-shell">
-    <header class="topbar panel-surface">
-      <div class="brand-lockup">
-        <div class="brand-mark">MB</div>
-        <div class="brand-copy">
-          <p class="eyebrow">AI MoodBand</p>
-          <h1>Ruang curhat yang tenang, rapi, dan siap bantu langkah berikutnya.</h1>
+      <a class="new-chat" href="/chat?new=1">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Percakapan baru</span>
+        <kbd>Ctrl K</kbd>
+      </a>
+
+      {% if conversations %}
+        <section class="conversation-history" aria-label="Riwayat percakapan">
+          <p class="nav-label">Percakapan</p>
+          <div class="conversation-list">
+            {% for conversation in conversations %}
+              <a class="conversation-link {{ 'active' if active_conversation and conversation.id == active_conversation.id else '' }}"
+                 href="/chat?conversation={{ conversation.id }}">
+                <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+                <span class="conversation-title">{{ conversation.title }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <nav class="sidebar-nav">
+        <p class="nav-label">Ruang utama</p>
+        <a class="nav-item active" href="#conversation">
+          <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/></svg>
+          <span>Ruang curhat</span>
+        </a>
+        <button class="nav-item" type="button" data-mood-open>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c2 2 5 2 7 0"/></svg>
+          <span>Mood check-in</span>
+        </button>
+        <a class="nav-item" href="/image-analysis">
+          <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
+          <span>Analisis gambar</span>
+        </a>
+
+        <p class="nav-label tools-label">Tools</p>
+        <a class="nav-item" href="/analytics">
+          <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+          <span>Analytics</span>
+        </a>
+        <a class="nav-item" href="/daily-summary">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h10M4 19h7"/><path d="m17 16 1.2 2.4L21 19l-2 2 .5 2.5"/></svg>
+          <span>Ringkasan harian</span>
+        </a>
+        <a class="nav-item" href="/memories">
+          <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-4.6 3A4 4 0 0 0 5 13.2 4 4 0 0 0 9 20h3V3Z"/><path d="M12 7h3a3 3 0 0 1 2.7 4.3A3.5 3.5 0 0 1 16 18h-4"/></svg>
+          <span>Memori percakapan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="privacy-card" id="memory-note">
+        <span class="privacy-icon">
+          <svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg>
+        </span>
+        <div>
+          <strong>Tersimpan lokal</strong>
+          <p>Memori chat tetap berada di perangkat ini.</p>
         </div>
       </div>
-      <div class="status-pill"><span class="status-dot"></span> mood: {{ prev_mood or 'normal' }}</div>
-    </header>
-
-    <section class="hero-panel panel-surface">
-      <div class="hero-copy">
-        <p class="section-kicker">Check-in emosi</p>
-        <h2>Mulai dari mood emoji, tulis curhat singkat, atau unggah gambar bila butuh konteks.</h2>
-        <p class="hero-text">Hasilnya dirapikan jadi refleksi singkat, pertanyaan lanjutan, dan ringkasan harian yang bisa disimpan.</p>
-        <div class="hero-tags">
-          <span>Listen-first</span>
-          <span>Memory aware</span>
-          <span>Daily summary</span>
-        </div>
+      <div class="sidebar-profile">
+        <span class="avatar avatar-user">D</span>
+        <div><strong>Demo User</strong><span>Ruang pribadi</span></div>
+        <span class="online-dot" title="Online"></span>
       </div>
-      <aside class="hero-card">
-        <p class="hero-card-kicker">Apa yang bisa dilakukan</p>
-        <ul class="feature-list">
-          <li><strong>Mulai dari emoji</strong><span>Sapaan awal menyesuaikan suasana hati yang dipilih.</span></li>
-          <li><strong>Kirim curhat</strong><span>Model merangkum emosi, topik, dan tingkat stres.</span></li>
-          <li><strong>Buat ringkasan</strong><span>Ambil pola harian tanpa kehilangan konteks.</span></li>
-        </ul>
-      </aside>
-    </section>
+    </aside>
 
-    <section class="workspace-grid">
-      <article class="panel composer-panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">Composer</p>
-            <h3>Atur mood dan curhatmu</h3>
-          </div>
-          <span class="panel-chip">max 6 MB</span>
-        </div>
+    <button class="sidebar-overlay" type="button" data-sidebar-close aria-label="Tutup menu"></button>
 
-        <form action="/search" method="POST" enctype="multipart/form-data" class="composer-form">
-          <div class="field-block">
-            <div class="field-label-row">
-              <label class="field-label">Pilih mood</label>
-              <span class="field-help">Ini mengubah nada sapaan awal</span>
-            </div>
-            <div class="mood-group">
-              <label class="mood-chip">
-                <input type="radio" name="mood" value="normal" {% if (prev_mood or '') == 'normal' %}checked{% endif %}>
-                <span class="dot"></span>
-                <span class="chip-body"><strong>Normal</strong><small>Mulai dari nada netral</small></span>
-              </label>
-
-              <label class="mood-chip">
-                <input type="radio" name="mood" value="sedih" {% if (prev_mood or '') == 'sedih' %}checked{% endif %}>
-                <span class="dot"></span>
-                <span class="chip-body"><strong>Sedih</strong><small>Pelan dan lebih lembut</small></span>
-              </label>
-
-              <label class="mood-chip">
-                <input type="radio" name="mood" value="marah" {% if (prev_mood or '') == 'marah' %}checked{% endif %}>
-                <span class="dot"></span>
-                <span class="chip-body"><strong>Marah</strong><small>Tegas, tapi tetap aman</small></span>
-              </label>
-
-              <label class="mood-chip">
-                <input type="radio" name="mood" value="senang" {% if (prev_mood or '') == 'senang' %}checked{% endif %}>
-                <span class="dot"></span>
-                <span class="chip-body"><strong>Senang</strong><small>Hangat dan ringan</small></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="field-block">
-            <div class="field-label-row">
-              <label class="field-label" for="query">Curhat</label>
-              <span class="field-help">Opsional, satu-dua kalimat sudah cukup</span>
-            </div>
-            <textarea id="query" name="query" class="input1" rows="5"
-              placeholder="Tuliskan apa yang paling berat hari ini. Kalau kosong, klik 'Mulai dari Emoji'."></textarea>
-          </div>
-
-          <div class="field-block">
-            <div class="field-label-row">
-              <label class="field-label" for="image">Lampiran gambar</label>
-              <span class="field-help">PNG, JPG, GIF, atau WEBP hingga 6 MB</span>
-            </div>
-            <input id="image" type="file" name="image" class="input2" accept=".png,.jpg,.jpeg,.gif,.webp">
-          </div>
-
-          <div class="button-grid">
-            <button type="submit" name="mode" value="open" class="btn btn-primary">Mulai dari Emoji</button>
-            <button type="submit" name="mode" value="chat" class="btn btn-secondary">Kirim Curhat</button>
-          </div>
-
-          <button type="submit" formaction="/summarize" formmethod="POST" class="btn btn-ghost btn-wide">
-            Buat Ringkasan Harian
+    <main class="chat-main" id="conversation">
+      <header class="chat-header">
+        <div class="header-left">
+          <button class="icon-button menu-button" type="button" data-sidebar-open aria-label="Buka menu">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
+          <div>
+            <div class="room-title-row">
+              <h1 id="active-room-title">{{ active_conversation.title if active_conversation else 'Ruang Curhat' }}</h1>
+              <span class="room-status"><i></i> Online</span>
+            </div>
+            <p>Tempat aman untuk cerita, satu pesan pada satu waktu.</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <span class="current-mood"><span>{{ {'normal':'😌','sedih':'😔','marah':'😤','senang':'😊'}.get(prev_mood or 'normal', '😌') }}</span> {{ (prev_mood or 'normal')|capitalize }}</span>
+          <a class="icon-button" href="#safety-note" aria-label="Informasi keamanan">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+          </a>
+        </div>
+      </header>
+
+      <section class="chat-scroll" id="chat-scroll" aria-live="polite">
+        <div class="chat-column">
+          {% set has_conversation = recent_messages or result or summary %}
+          {% if not has_conversation %}
+            <section class="welcome-state">
+              <div class="welcome-mark">
+                <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+              </div>
+              <p class="welcome-kicker">Halo, aku MoodBand</p>
+              <h2>Apa yang sedang memenuhi<br>pikiranmu hari ini?</h2>
+              <p class="welcome-copy">Tidak perlu merangkainya dengan sempurna. Mulai saja dari bagian yang paling terasa.</p>
+              <div class="starter-grid">
+                <button type="button" class="starter-card" data-prompt="Hari ini rasanya cukup berat, tapi aku bingung mulai cerita dari mana.">
+                  <span class="starter-emoji">🌧️</span>
+                  <span><strong>Aku lagi kewalahan</strong><small>Bantu aku mengurai pelan-pelan</small></span>
+                  <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                <button type="button" class="starter-card" data-prompt="Ada sesuatu yang membuatku overthinking sejak tadi.">
+                  <span class="starter-emoji">🫧</span>
+                  <span><strong>Pikiran tidak berhenti</strong><small>Ceritakan yang terus terulang</small></span>
+                  <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                <button type="button" class="starter-card" data-prompt="Aku ingin check-in sebentar tentang perasaanku hari ini.">
+                  <span class="starter-emoji">🌱</span>
+                  <span><strong>Check-in singkat</strong><small>Kenali perasaanmu sekarang</small></span>
+                  <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+            </section>
+          {% else %}
+            <div class="day-divider"><span>Hari ini</span></div>
+
+            {% for message in recent_messages or [] %}
+              <article class="message-row {{ 'message-user' if message.role == 'user' else 'message-assistant' }}">
+                <div class="avatar {{ 'avatar-user' if message.role == 'user' else 'avatar-ai' }}">
+                  {% if message.role == 'user' %}D{% else %}
+                    <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+                  {% endif %}
+                </div>
+                <div class="message-wrap">
+                  <div class="message-meta"><strong>{{ 'Kamu' if message.role == 'user' else 'MoodBand' }}</strong><span>{{ message.timestamp[11:16] }}</span></div>
+                  <div class="message-bubble"><p>{{ message.text }}</p></div>
+                </div>
+              </article>
+            {% endfor %}
+
+            {% if submitted_query %}
+              <article class="message-row message-user current-message">
+                <div class="avatar avatar-user">D</div>
+                <div class="message-wrap">
+                  <div class="message-meta"><strong>Kamu</strong><span>Baru saja</span></div>
+                  <div class="message-bubble">
+                    <p>{{ submitted_query }}</p>
+                    {% if submitted_image %}<span class="attachment-pill">📎 Gambar dilampirkan</span>{% endif %}
+                  </div>
+                </div>
+              </article>
+            {% endif %}
+
+            {% if result %}
+              <article class="message-row message-assistant current-message">
+                <div class="avatar avatar-ai">
+                  <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+                </div>
+                <div class="message-wrap response-wrap">
+                  <div class="message-meta"><strong>MoodBand</strong><span>Baru saja</span></div>
+                  <div class="message-bubble response-bubble">{{ result | safe }}</div>
+                </div>
+              </article>
+            {% endif %}
+
+            {% if summary %}
+              <article class="message-row message-assistant current-message">
+                <div class="avatar avatar-ai">
+                  <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+                </div>
+                <div class="message-wrap response-wrap">
+                  <div class="message-meta"><strong>Ringkasan harian</strong><span>Baru saja</span></div>
+                  <div class="message-bubble response-bubble">{{ summary | safe }}</div>
+                </div>
+              </article>
+            {% endif %}
+          {% endif %}
+
+          <div class="safety-note" id="safety-note">
+            <svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.7 3.2 8 7.5 9.5 4.3-1.5 7.5-4.8 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span><strong>Ruang refleksi, bukan layanan darurat.</strong> Jika kamu sedang dalam bahaya, segera hubungi orang tepercaya atau layanan darurat setempat.</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="composer-dock">
+        <form action="/search" method="POST" enctype="multipart/form-data" class="chat-form" id="chat-form">
+          <input type="hidden" name="conversation_id" value="{{ active_conversation.id if active_conversation else '' }}">
+          <div class="mood-picker" id="mood-picker">
+            <button class="mood-trigger" type="button" data-mood-open>
+              <span class="mood-trigger-emoji" id="selected-mood-emoji">{{ {'normal':'😌','sedih':'😔','marah':'😤','senang':'😊'}.get(prev_mood or 'normal', '😌') }}</span>
+              <span>Aku merasa <b id="selected-mood-label">{{ (prev_mood or 'normal')|capitalize }}</b></span>
+              <svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+            </button>
+            <div class="mood-form-values" aria-hidden="true">
+              <input type="radio" name="mood" value="normal" {% if (prev_mood or 'normal') == 'normal' %}checked{% endif %} tabindex="-1">
+              <input type="radio" name="mood" value="sedih" {% if prev_mood == 'sedih' %}checked{% endif %} tabindex="-1">
+              <input type="radio" name="mood" value="marah" {% if prev_mood == 'marah' %}checked{% endif %} tabindex="-1">
+              <input type="radio" name="mood" value="senang" {% if prev_mood == 'senang' %}checked{% endif %} tabindex="-1">
+            </div>
+          </div>
+
+          <div class="composer-box">
+            <input id="image" type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp" hidden>
+            <button class="composer-tool" type="button" data-open-file aria-label="Lampirkan gambar" title="Lampirkan gambar">
+              <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
+            </button>
+            <div class="composer-input-wrap">
+              <textarea id="query" name="query" rows="1" placeholder="Ceritakan apa yang kamu rasakan..." aria-label="Pesan"></textarea>
+              <span class="file-name" id="file-name"></span>
+            </div>
+            <button class="emoji-open" type="submit" name="mode" value="open" title="Mulai hanya dari mood" aria-label="Mulai hanya dari mood">✨</button>
+            <button class="send-button" type="submit" name="mode" value="chat" aria-label="Kirim pesan">
+              <svg viewBox="0 0 24 24"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg>
+            </button>
+          </div>
+          <p class="composer-hint">MoodBand dapat membuat kesalahan. Gunakan respons sebagai teman refleksi, bukan diagnosis.</p>
         </form>
-      </article>
+      </footer>
+    </main>
+  </div>
 
-      <aside class="panel guide-panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">How it works</p>
-            <h3>Tiga langkah singkat</h3>
-          </div>
-        </div>
+  {% include '_action_modal.html' %}
 
-        <ol class="step-list">
-          <li>
-            <span class="step-index">01</span>
-            <div>
-              <strong>Pilih mood</strong>
-              <p>Menentukan nada pembuka supaya respon terasa lebih pas.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-index">02</span>
-            <div>
-              <strong>Tulis curhat atau unggah gambar</strong>
-              <p>Kalau kosong, aplikasi langsung masuk mode sapaan awal.</p>
-            </div>
-          </li>
-          <li>
-            <span class="step-index">03</span>
-            <div>
-              <strong>Lihat hasil dan ringkasan</strong>
-              <p>Respons, topik, dan langkah kecil ditampilkan di panel kanan.</p>
-            </div>
-          </li>
-        </ol>
+  <div class="mood-modal" id="mood-modal" aria-hidden="true">
+    <div class="mood-modal-glow mood-modal-glow-a"></div>
+    <div class="mood-modal-glow mood-modal-glow-b"></div>
+    <section class="mood-dialog" role="dialog" aria-modal="true" aria-labelledby="mood-dialog-title">
+      <div class="mood-dialog-top">
+        <span class="mood-dialog-brand">
+          <span class="brand-mark">
+            <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+          </span>
+          Mood check-in
+        </span>
+        <button class="mood-close" type="button" data-mood-close aria-label="Tutup mood check-in">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
 
-        <div class="callout-card">
-          <p class="callout-label">Tip</p>
-          <p>Kalau lagi penuh banget, tulis versi singkat dulu. Kamu selalu bisa kirim detailnya belakangan.</p>
-        </div>
-      </aside>
+      <div class="mood-dialog-copy">
+        <span class="mood-step">Check-in hari ini</span>
+        <h2 id="mood-dialog-title">Apa yang paling mirip dengan<br>perasaanmu sekarang?</h2>
+        <p>Tidak perlu dipikirkan terlalu lama. Pilih yang terasa paling dekat.</p>
+      </div>
+
+      <div class="mood-card-grid" role="radiogroup" aria-label="Pilih mood">
+        <label class="mood-card mood-card-normal">
+          <input type="radio" name="modal-mood" value="normal" {% if (prev_mood or 'normal') == 'normal' %}checked{% endif %}>
+          <span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span>
+          <span class="mood-card-emoji">😌</span>
+          <span class="mood-card-copy"><strong>Normal</strong><small>Stabil, tenang, atau biasa saja</small></span>
+        </label>
+        <label class="mood-card mood-card-sad">
+          <input type="radio" name="modal-mood" value="sedih" {% if prev_mood == 'sedih' %}checked{% endif %}>
+          <span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span>
+          <span class="mood-card-emoji">😔</span>
+          <span class="mood-card-copy"><strong>Sedih</strong><small>Berat, kosong, atau ingin didengar</small></span>
+        </label>
+        <label class="mood-card mood-card-angry">
+          <input type="radio" name="modal-mood" value="marah" {% if prev_mood == 'marah' %}checked{% endif %}>
+          <span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span>
+          <span class="mood-card-emoji">😤</span>
+          <span class="mood-card-copy"><strong>Marah</strong><small>Kesal, tegang, atau penuh energi</small></span>
+        </label>
+        <label class="mood-card mood-card-happy">
+          <input type="radio" name="modal-mood" value="senang" {% if prev_mood == 'senang' %}checked{% endif %}>
+          <span class="mood-card-check"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></span>
+          <span class="mood-card-emoji">😊</span>
+          <span class="mood-card-copy"><strong>Senang</strong><small>Ringan, hangat, atau bersemangat</small></span>
+        </label>
+      </div>
+
+      <div class="mood-dialog-actions">
+        <button class="mood-action-secondary" type="button" data-mood-start>
+          Mulai dari mood ini
+        </button>
+        <button class="mood-action-primary" type="button" data-mood-continue>
+          Lanjut cerita
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+        </button>
+      </div>
+      <p class="mood-dialog-note">Pilihanmu membantu MoodBand menyesuaikan nada respons.</p>
     </section>
+  </div>
 
-    <section class="output-grid">
-      <article class="panel output-panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">Response</p>
-            <h3>Hasil analisis</h3>
+  <script>
+    const body = document.body;
+    const textarea = document.getElementById('query');
+    const fileInput = document.getElementById('image');
+    const fileName = document.getElementById('file-name');
+    const moodModal = document.getElementById('mood-modal');
+    const moodEmoji = document.getElementById('selected-mood-emoji');
+    const moodLabel = document.getElementById('selected-mood-label');
+    const chatForm = document.getElementById('chat-form');
+    const chatColumn = document.querySelector('.chat-column');
+    const chatScroll = document.getElementById('chat-scroll');
+    const safetyNote = document.getElementById('safety-note');
+    const sendButton = document.querySelector('.send-button');
+    const actionModal = document.getElementById('action-modal');
+    const actionModalIcon = document.getElementById('action-modal-icon');
+    const actionModalTitle = document.getElementById('action-modal-title');
+    const actionModalDescription = document.getElementById('action-modal-description');
+    const actionModalDetails = document.getElementById('action-modal-details');
+    const actionStartButton = document.getElementById('action-dialog-start');
+    const actionFeedback = document.getElementById('action-dialog-feedback');
+    let moodLastFocused = null;
+    let isSending = false;
+    let selectedActionCard = null;
+    let actionLastFocused = null;
+    const moodMeta = {
+      normal: { emoji: '😌', label: 'Normal' },
+      sedih: { emoji: '😔', label: 'Sedih' },
+      marah: { emoji: '😤', label: 'Marah' },
+      senang: { emoji: '😊', label: 'Senang' }
+    };
+
+    const aiAvatar = `
+      <div class="avatar avatar-ai">
+        <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
+      </div>`;
+
+    const currentTime = () => new Intl.DateTimeFormat('id-ID', {
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(new Date());
+
+    const scrollToLatest = (smooth = true) => {
+      requestAnimationFrame(() => {
+        chatScroll.scrollTo({ top: chatScroll.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+      });
+    };
+
+    const ensureConversationStarted = () => {
+      document.querySelector('.welcome-state')?.remove();
+      if (!document.querySelector('.day-divider')) {
+        const divider = document.createElement('div');
+        divider.className = 'day-divider';
+        divider.innerHTML = '<span>Hari ini</span>';
+        chatColumn.insertBefore(divider, chatColumn.firstChild);
+      }
+    };
+
+    const appendUserMessage = (text, attachmentName) => {
+      if (!text && !attachmentName) return;
+      ensureConversationStarted();
+      const row = document.createElement('article');
+      row.className = 'message-row message-user current-message';
+      row.innerHTML = `
+        <div class="avatar avatar-user">D</div>
+        <div class="message-wrap">
+          <div class="message-meta"><strong>Kamu</strong><span>${currentTime()}</span></div>
+          <div class="message-bubble"><p></p></div>
+        </div>`;
+      row.querySelector('p').textContent = text || 'Mengirim sebuah gambar';
+      if (attachmentName) {
+        const attachment = document.createElement('span');
+        attachment.className = 'attachment-pill';
+        attachment.textContent = `📎 ${attachmentName}`;
+        row.querySelector('.message-bubble').appendChild(attachment);
+      }
+      chatColumn.insertBefore(row, safetyNote);
+      scrollToLatest();
+    };
+
+    const appendTypingMessage = () => {
+      ensureConversationStarted();
+      const row = document.createElement('article');
+      row.className = 'message-row message-assistant message-pending current-message';
+      row.innerHTML = `
+        ${aiAvatar}
+        <div class="message-wrap response-wrap">
+          <div class="message-meta"><strong>MoodBand</strong><span>sedang mengetik</span></div>
+          <div class="message-bubble typing-bubble">
+            <span class="typing-dots"><i></i><i></i><i></i></span>
+            <span class="typing-status">Mendengarkan ceritamu...</span>
           </div>
-          <span class="panel-chip">status: live</span>
-        </div>
-        <div class="panel-content">
-          {% if result %}
-            {{ result | safe }}
-          {% else %}
-            <div class="empty-state">
-              <strong>Belum ada respons.</strong>
-              <p>Mulai dengan mood emoji atau kirim curhat singkat untuk melihat hasilnya di sini.</p>
-            </div>
-          {% endif %}
-        </div>
-      </article>
+        </div>`;
+      chatColumn.insertBefore(row, safetyNote);
+      scrollToLatest();
 
-      <article class="panel output-panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">Summary</p>
-            <h3>Ringkasan harian</h3>
-          </div>
-          <span class="panel-chip">carry-over</span>
-        </div>
-        <div class="panel-content">
-          {% if summary %}
-            {{ summary | safe }}
-          {% else %}
-            <div class="empty-state">
-              <strong>Ringkasan belum dibuat.</strong>
-              <p>Gunakan tombol ringkasan setelah ada percakapan hari ini.</p>
-            </div>
-          {% endif %}
-        </div>
-      </article>
-    </section>
+      const status = row.querySelector('.typing-status');
+      const messages = ['Mengingat konteks percakapan...', 'Merangkai respons dengan hati-hati...'];
+      let index = 0;
+      const timer = setInterval(() => {
+        if (!row.isConnected) return clearInterval(timer);
+        status.textContent = messages[Math.min(index++, messages.length - 1)];
+      }, 4200);
+      row.dataset.timer = timer;
+      return row;
+    };
 
-    <footer class="page-footer">
-      <span>Local Flask interface</span>
-      <span>Designed for calm, not clutter</span>
-    </footer>
-  </main>
+    const resolveTypingMessage = (row, html) => {
+      clearInterval(Number(row.dataset.timer));
+      row.classList.remove('message-pending');
+      row.querySelector('.message-meta span').textContent = currentTime();
+      const bubble = row.querySelector('.message-bubble');
+      bubble.className = 'message-bubble response-bubble';
+      bubble.innerHTML = html;
+      scrollToLatest();
+    };
+
+    const rejectTypingMessage = (row, message) => {
+      clearInterval(Number(row.dataset.timer));
+      row.classList.remove('message-pending');
+      row.classList.add('message-error');
+      row.querySelector('.message-meta span').textContent = 'gagal terkirim';
+      const bubble = row.querySelector('.message-bubble');
+      bubble.className = 'message-bubble';
+      bubble.innerHTML = '';
+      const copy = document.createElement('p');
+      copy.textContent = message;
+      const hint = document.createElement('span');
+      hint.className = 'retry-hint';
+      hint.textContent = 'Pesanmu tetap terlihat di atas. Coba kirim ulang saat siap.';
+      bubble.append(copy, hint);
+      scrollToLatest();
+    };
+
+    const openActionModal = card => {
+      selectedActionCard = card;
+      actionLastFocused = document.activeElement;
+      actionModalIcon.textContent = card.querySelector('.action-icon')?.textContent.trim() || '✨';
+      actionModalTitle.textContent = card.querySelector('h4')?.textContent.trim() || 'Langkah kecil';
+      actionModalDescription.textContent = card.querySelector('.action-content > p')?.textContent.trim() || 'Coba langkah ini saat kamu sudah siap.';
+      actionModalDetails.innerHTML = '';
+      const sourceDetails = card.querySelector('.action-details');
+      if (sourceDetails) {
+        [...sourceDetails.children].forEach(item => actionModalDetails.appendChild(item.cloneNode(true)));
+      }
+      actionFeedback.classList.remove('visible');
+      actionStartButton.classList.remove('confirmed');
+      actionStartButton.disabled = false;
+      actionStartButton.innerHTML = 'Aku mau coba ini <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>';
+      body.classList.add('action-modal-open');
+      actionModal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.querySelector('.action-dialog-close').focus(), 120);
+    };
+
+    const closeActionModal = () => {
+      body.classList.remove('action-modal-open');
+      actionModal.setAttribute('aria-hidden', 'true');
+      actionLastFocused?.focus();
+    };
+
+    document.addEventListener('click', event => {
+      const actionCard = event.target.closest('.action-card');
+      if (actionCard) openActionModal(actionCard);
+    });
+    document.querySelectorAll('[data-action-close]').forEach(button => {
+      button.addEventListener('click', closeActionModal);
+    });
+    actionStartButton.addEventListener('click', () => {
+      selectedActionCard?.classList.add('action-selected');
+      actionFeedback.classList.add('visible');
+      actionStartButton.classList.add('confirmed');
+      actionStartButton.disabled = true;
+      actionStartButton.textContent = 'Sudah dipilih ✓';
+    });
+
+    document.querySelectorAll('[data-sidebar-open]').forEach(button => {
+      button.addEventListener('click', () => body.classList.add('sidebar-open'));
+    });
+    document.querySelectorAll('[data-sidebar-close]').forEach(button => {
+      button.addEventListener('click', () => body.classList.remove('sidebar-open'));
+    });
+    document.querySelectorAll('[data-open-file]').forEach(button => {
+      button.addEventListener('click', () => {
+        fileInput.click();
+        body.classList.remove('sidebar-open');
+      });
+    });
+    const openMoodModal = () => {
+      moodLastFocused = document.activeElement;
+      const selected = document.querySelector('input[name="mood"]:checked');
+      const matchingModal = document.querySelector(`input[name="modal-mood"][value="${selected?.value || 'normal'}"]`);
+      if (matchingModal) matchingModal.checked = true;
+      body.classList.remove('sidebar-open');
+      body.classList.add('mood-modal-open');
+      moodModal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.querySelector('[data-mood-close]').focus(), 180);
+    };
+
+    const closeMoodModal = () => {
+      body.classList.remove('mood-modal-open');
+      moodModal.setAttribute('aria-hidden', 'true');
+      if (moodLastFocused) moodLastFocused.focus();
+    };
+
+    const applyMoodSelection = () => {
+      const selected = document.querySelector('input[name="modal-mood"]:checked');
+      if (!selected) return 'normal';
+      const formMood = document.querySelector(`input[name="mood"][value="${selected.value}"]`);
+      if (formMood) formMood.checked = true;
+      moodEmoji.textContent = moodMeta[selected.value].emoji;
+      moodLabel.textContent = moodMeta[selected.value].label;
+      return selected.value;
+    };
+
+    document.querySelectorAll('[data-mood-open]').forEach(button => {
+      button.addEventListener('click', openMoodModal);
+    });
+    document.querySelectorAll('[data-mood-close]').forEach(button => {
+      button.addEventListener('click', closeMoodModal);
+    });
+    moodModal.addEventListener('click', event => {
+      if (event.target === moodModal) closeMoodModal();
+    });
+    document.querySelector('[data-mood-continue]').addEventListener('click', () => {
+      applyMoodSelection();
+      closeMoodModal();
+      setTimeout(() => textarea.focus(), 50);
+    });
+    document.querySelector('[data-mood-start]').addEventListener('click', () => {
+      applyMoodSelection();
+      closeMoodModal();
+      requestAnimationFrame(() => document.querySelector('.emoji-open').click());
+    });
+    document.querySelectorAll('[data-prompt]').forEach(button => {
+      button.addEventListener('click', () => {
+        textarea.value = button.dataset.prompt;
+        textarea.dispatchEvent(new Event('input'));
+        textarea.focus();
+      });
+    });
+
+    chatForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (isSending) return;
+
+      const mode = event.submitter?.value || 'chat';
+      const message = textarea.value.trim();
+      const attachmentName = fileInput.files[0]?.name || '';
+      const formData = new FormData(chatForm);
+      formData.set('mode', mode);
+
+      appendUserMessage(message, attachmentName);
+      const activeConversationTitle = document.querySelector('.conversation-link.active .conversation-title');
+      if (message && activeConversationTitle?.textContent.trim() === 'Percakapan baru') {
+        const cleanTitle = message.replace(/\s+/g, ' ').trim();
+        activeConversationTitle.textContent = cleanTitle.length > 44
+          ? cleanTitle.slice(0, 43).trim() + '…'
+          : cleanTitle;
+        document.getElementById('active-room-title').textContent = activeConversationTitle.textContent;
+      }
+      const typingRow = appendTypingMessage();
+
+      textarea.value = '';
+      textarea.style.height = 'auto';
+      fileInput.value = '';
+      fileName.textContent = '';
+      isSending = true;
+      sendButton.disabled = true;
+      chatForm.classList.add('is-sending');
+
+      try {
+        const response = await fetch('/search', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'fetch'
+          }
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'Respons tidak dapat diproses.');
+        }
+        resolveTypingMessage(typingRow, payload.html);
+        if (payload.conversation?.title) {
+          const activeTitle = document.querySelector('.conversation-link.active .conversation-title');
+          if (activeTitle) activeTitle.textContent = payload.conversation.title;
+          document.getElementById('active-room-title').textContent = payload.conversation.title;
+        }
+      } catch (error) {
+        rejectTypingMessage(typingRow, error.message || 'Koneksi terputus. Coba lagi, ya.');
+      } finally {
+        isSending = false;
+        sendButton.disabled = false;
+        chatForm.classList.remove('is-sending');
+        textarea.focus();
+      }
+    });
+
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
+    });
+    textarea.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        document.querySelector('.send-button').click();
+      }
+    });
+    fileInput.addEventListener('change', () => {
+      fileName.textContent = fileInput.files[0] ? '📎 ' + fileInput.files[0].name : '';
+    });
+
+    const queryActions = new URLSearchParams(window.location.search);
+    if (queryActions.get('checkin') === '1') {
+      requestAnimationFrame(openMoodModal);
+    } else if (queryActions.get('attach') === '1') {
+      requestAnimationFrame(() => fileInput.click());
+    }
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && body.classList.contains('action-modal-open')) {
+        closeActionModal();
+        return;
+      }
+      if (event.key === 'Escape' && body.classList.contains('mood-modal-open')) {
+        closeMoodModal();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        window.location.href = '/chat?new=1';
+      }
+    });
+    {% if result or summary %}
+      requestAnimationFrame(() => {
+        const current = document.querySelector('.current-message:last-of-type');
+        if (current) current.scrollIntoView({ block: 'end' });
+      });
+    {% endif %}
+  </script>
 </body>
 </html>
