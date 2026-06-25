@@ -55,11 +55,6 @@
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c2 2 5 2 7 0"/></svg>
           <span>Mood check-in</span>
         </a>
-        <a class="nav-item {{ 'active' if tool == 'image' else '' }}" href="/image-analysis">
-          <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
-          <span>Analisis gambar</span>
-        </a>
-
         <p class="nav-label tools-label">Tools</p>
         <a class="nav-item" href="/analytics">
           <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
@@ -81,9 +76,15 @@
         <div><strong>Tersimpan lokal</strong><p>Data tools tetap berada di perangkat ini.</p></div>
       </div>
       <div class="sidebar-profile">
-        <span class="avatar avatar-user">D</span>
-        <div><strong>Demo User</strong><span>Ruang pribadi</span></div>
+        <span class="avatar avatar-user">{{ current_user.initial if current_user else 'D' }}</span>
+        <div><strong>{{ current_user.name if current_user else 'Demo User' }}</strong><span>Ruang pribadi</span></div>
         <span class="online-dot" title="Online"></span>
+        <form class="logout-form" action="/logout" method="POST">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button class="logout-button" type="submit" aria-label="Keluar">
+            <svg viewBox="0 0 24 24"><path d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2"/><path d="M15 12H3M7 8l-4 4 4 4"/></svg>
+          </button>
+        </form>
       </div>
     </aside>
 
@@ -114,6 +115,12 @@
               <span>{{ tool_error }}</span>
             </div>
           {% endif %}
+          {% if tool_success %}
+            <div class="tool-alert tool-alert-success">
+              <svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.7 3.2 8 7.5 9.5 4.3-1.5 7.5-4.8 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span>{{ tool_success }}</span>
+            </div>
+          {% endif %}
 
           {% if tool == 'image' %}
             <section class="tool-intro image-tool-intro">
@@ -126,6 +133,7 @@
 
             <div class="image-tool-layout">
               <form action="/image-analysis" method="POST" enctype="multipart/form-data" class="tool-panel image-upload-form" id="image-tool-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <div class="tool-panel-head">
                   <div><span class="tool-overline">Langkah 1</span><h3>Pilih gambar</h3></div>
                   <span class="file-limit">Maks. 6 MB</span>
@@ -206,12 +214,24 @@
                   <p>MoodBand akan mengambil poin penting dan pertanyaan yang bisa kamu bawa ke esok hari.</p>
                 </div>
                 <form action="/summarize" method="POST" id="summary-form">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                   <input type="hidden" name="mood" value="{{ prev_mood or 'normal' }}">
                   <button class="tool-primary-button" type="submit" {% if not today_message_count %}disabled{% endif %}>
                     <span class="button-idle">{{ 'Buat ringkasan baru' if latest_summary else 'Buat ringkasan pertama' }} <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg></span>
                     <span class="button-loading"><i></i> Merangkum harimu...</span>
                   </button>
                 </form>
+              </div>
+              <div class="summary-clear-card">
+                <span class="summary-clear-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></span>
+                <div>
+                  <span class="tool-overline">Kontrol data</span>
+                  <h3>Hapus semua data chat</h3>
+                  <p>{{ chat_data_count or 0 }} catatan lokal akan dihapus dari akun ini, termasuk percakapan dan ringkasan.</p>
+                </div>
+                <button class="tool-danger-button" type="button" data-clear-chat-open {% if not chat_data_count %}disabled{% endif %}>
+                  Hapus data
+                </button>
               </div>
             </section>
 
@@ -259,7 +279,7 @@
             </section>
 
             <section class="memory-stats">
-              <article><span class="memory-stat-icon user-memory-icon">D</span><div><small>Pesan kamu</small><strong>{{ user_memory_count or 0 }}</strong></div></article>
+              <article><span class="memory-stat-icon user-memory-icon">{{ current_user.initial if current_user else 'D' }}</span><div><small>Pesan kamu</small><strong>{{ user_memory_count or 0 }}</strong></div></article>
               <article><span class="memory-stat-icon"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span><div><small>Respons MoodBand</small><strong>{{ coach_memory_count or 0 }}</strong></div></article>
               <article><span class="memory-stat-icon"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg></span><div><small>Penyimpanan</small><strong class="memory-local-label">Lokal</strong></div></article>
             </section>
@@ -281,7 +301,7 @@
                 {% for item in memories or [] %}
                   <article class="memory-item" data-memory-role="{{ item.role }}" data-memory-text="{{ item.text|lower }}">
                     <div class="avatar {{ 'avatar-user' if item.role == 'user' else 'avatar-ai' }}">
-                      {% if item.role == 'user' %}D{% else %}<svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>{% endif %}
+                      {% if item.role == 'user' %}{{ current_user.initial if current_user else 'D' }}{% else %}<svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>{% endif %}
                     </div>
                     <div class="memory-item-body">
                       <div class="memory-item-head">
@@ -318,6 +338,23 @@
 
   {% include '_action_modal.html' %}
 
+  {% if tool == 'summary' %}
+    <div class="clear-chat-modal" id="clear-chat-modal" aria-hidden="true">
+      <button class="clear-chat-backdrop" type="button" data-clear-chat-close aria-label="Tutup konfirmasi"></button>
+      <section class="clear-chat-dialog" role="dialog" aria-modal="true" aria-labelledby="clear-chat-title">
+        <div class="clear-chat-mark"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></div>
+        <span class="tool-overline">Konfirmasi hapus</span>
+        <h2 id="clear-chat-title">Hapus semua data chat?</h2>
+        <p>Tindakan ini menghapus percakapan, memori chat, analytics dari metadata chat, dan arsip ringkasan untuk akun ini. Akunmu tetap aktif.</p>
+        <form action="/chat-data/clear" method="POST" class="clear-chat-actions">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button class="clear-chat-cancel" type="button" data-clear-chat-close>Batalkan</button>
+          <button class="clear-chat-confirm" type="submit">Hapus semua data</button>
+        </form>
+      </section>
+    </div>
+  {% endif %}
+
   <script>
     const actionModal = document.getElementById('action-modal');
     const actionModalIcon = document.getElementById('action-modal-icon');
@@ -326,8 +363,10 @@
     const actionModalDetails = document.getElementById('action-modal-details');
     const actionStartButton = document.getElementById('action-dialog-start');
     const actionFeedback = document.getElementById('action-dialog-feedback');
+    const clearChatModal = document.getElementById('clear-chat-modal');
     let selectedActionCard = null;
     let actionLastFocused = null;
+    let clearChatLastFocused = null;
 
     const openActionModal = card => {
       selectedActionCard = card;
@@ -371,6 +410,26 @@
     });
     document.querySelectorAll('[data-sidebar-close]').forEach(button => {
       button.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+    });
+
+    const openClearChatModal = trigger => {
+      if (!clearChatModal) return;
+      clearChatLastFocused = trigger || document.activeElement;
+      document.body.classList.add('clear-chat-open');
+      clearChatModal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => clearChatModal.querySelector('.clear-chat-cancel')?.focus(), 120);
+    };
+    const closeClearChatModal = () => {
+      if (!clearChatModal) return;
+      document.body.classList.remove('clear-chat-open');
+      clearChatModal.setAttribute('aria-hidden', 'true');
+      clearChatLastFocused?.focus();
+    };
+    document.querySelectorAll('[data-clear-chat-open]').forEach(button => {
+      button.addEventListener('click', () => openClearChatModal(button));
+    });
+    document.querySelectorAll('[data-clear-chat-close]').forEach(button => {
+      button.addEventListener('click', closeClearChatModal);
     });
 
     const imageInput = document.getElementById('tool-image');
@@ -438,6 +497,10 @@
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && document.body.classList.contains('action-modal-open')) {
         closeActionModal();
+        return;
+      }
+      if (event.key === 'Escape' && document.body.classList.contains('clear-chat-open')) {
+        closeClearChatModal();
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {

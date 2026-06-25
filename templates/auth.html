@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f3f7f2">
+  <title>{{ 'Daftar' if mode == 'signup' else 'Masuk' }} - AI MoodBand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+  <main class="auth-shell {{ 'auth-signup' if mode == 'signup' else 'auth-signin' }}" data-auth-shell data-initial-mode="{{ mode }}">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <a class="auth-brand" href="/">
+        <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span>
+        <span>AI MoodBand</span>
+      </a>
+
+      <div class="auth-tabs" aria-label="Pilih akses akun">
+        <a class="{{ 'active' if mode != 'signup' else '' }}" href="{{ url_for('signin', next=next_url) }}" data-auth-mode="signin">Masuk</a>
+        <a class="{{ 'active' if mode == 'signup' else '' }}" href="{{ url_for('signup', next=next_url) }}" data-auth-mode="signup">Daftar</a>
+      </div>
+
+      <div class="auth-copy">
+        <span id="auth-kicker">{{ 'Buat ruang pribadimu' if mode == 'signup' else 'Selamat datang lagi' }}</span>
+        <h1 id="auth-title">{{ 'Mulai dengan akun yang aman.' if mode == 'signup' else 'Masuk ke ruang refleksimu.' }}</h1>
+        <p id="auth-description">{{ 'Akun memisahkan chat, ringkasan, dan analytics milikmu dari pengguna lain di perangkat ini.' if mode == 'signup' else 'Session akan menjaga ruang chat tetap pribadi selama kamu memakai perangkat ini.' }}</p>
+      </div>
+
+      {% if error %}
+        <div class="auth-alert" role="alert" data-auth-alert>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <div class="auth-panel-stage" data-auth-stage>
+        <form class="auth-form auth-panel auth-panel-signin {{ 'active' if mode != 'signup' else '' }}" method="POST" action="{{ url_for('signin') }}" data-auth-panel="signin">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+
+          <label class="auth-field">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" value="{{ form_email if mode != 'signup' else '' }}" required placeholder="nama@email.com">
+          </label>
+
+          <label class="auth-field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="Minimal 8 karakter">
+          </label>
+
+          <label class="auth-remember">
+            <input type="checkbox" name="remember" value="1" checked>
+            <span>Ingat sesi ini</span>
+          </label>
+
+          <button class="auth-submit" type="submit">
+            Masuk
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+          </button>
+
+          <p class="auth-switch">
+            Belum punya akun? <a href="{{ url_for('signup', next=next_url) }}" data-auth-mode="signup">Daftar dulu</a>
+          </p>
+        </form>
+
+        <form class="auth-form auth-panel auth-panel-signup {{ 'active' if mode == 'signup' else '' }}" method="POST" action="{{ url_for('signup') }}" data-auth-panel="signup">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+
+          <label class="auth-field">
+            <span>Nama</span>
+            <input name="name" type="text" autocomplete="name" value="{{ form_name or '' }}" required minlength="2" placeholder="Nama panggilanmu">
+          </label>
+
+          <label class="auth-field">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" value="{{ form_email if mode == 'signup' else '' }}" required placeholder="nama@email.com">
+          </label>
+
+          <label class="auth-field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="Minimal 8 karakter">
+          </label>
+
+          <label class="auth-field">
+            <span>Konfirmasi password</span>
+            <input name="password_confirm" type="password" autocomplete="new-password" required minlength="8" placeholder="Ulangi password">
+          </label>
+
+          <button class="auth-submit" type="submit">
+            Buat akun
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+          </button>
+
+          <p class="auth-switch">
+            Sudah punya akun? <a href="{{ url_for('signin', next=next_url) }}" data-auth-mode="signin">Masuk di sini</a>
+          </p>
+        </form>
+      </div>
+    </section>
+
+    <aside class="auth-visual" aria-label="Privasi MoodBand">
+      <div class="auth-visual-card">
+        <div class="auth-visual-head">
+          <span class="avatar avatar-ai"><svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg></span>
+          <div><strong>Ruang pribadi</strong><small><i></i> session aktif</small></div>
+        </div>
+        <div class="auth-privacy-row">
+          <span><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5Z"/></svg></span>
+          <div><strong>Cookie aman</strong><p>Session disimpan dalam cookie HTTP-only dan SameSite Lax.</p></div>
+        </div>
+        <div class="auth-privacy-row">
+          <span><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.7 3.2 8 7.5 9.5 4.3-1.5 7.5-4.8 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <div><strong>Data terpisah</strong><p>Chat, analytics, dan ringkasan mengikuti akun yang sedang login.</p></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const authShell = document.querySelector('[data-auth-shell]');
+    const authStage = document.querySelector('[data-auth-stage]');
+    const authTabs = [...document.querySelectorAll('[data-auth-mode]')];
+    const authPanels = [...document.querySelectorAll('[data-auth-panel]')];
+    const authAlert = document.querySelector('[data-auth-alert]');
+    const authKicker = document.getElementById('auth-kicker');
+    const authTitle = document.getElementById('auth-title');
+    const authDescription = document.getElementById('auth-description');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const authCopy = {
+      signin: {
+        title: 'Masuk ke ruang refleksimu.',
+        kicker: 'Selamat datang lagi',
+        description: 'Session akan menjaga ruang chat tetap pribadi selama kamu memakai perangkat ini.',
+        documentTitle: 'Masuk - AI MoodBand'
+      },
+      signup: {
+        title: 'Mulai dengan akun yang aman.',
+        kicker: 'Buat ruang pribadimu',
+        description: 'Akun memisahkan chat, ringkasan, dan analytics milikmu dari pengguna lain di perangkat ini.',
+        documentTitle: 'Daftar - AI MoodBand'
+      }
+    };
+
+    const setStageHeight = () => {
+      const activePanel = document.querySelector('[data-auth-panel].active');
+      if (activePanel && authStage) {
+        authStage.style.height = `${activePanel.offsetHeight}px`;
+      }
+    };
+
+    const setAuthMode = (mode, updateHistory = true, clearAlert = true) => {
+      const nextMode = mode === 'signup' ? 'signup' : 'signin';
+      authShell.classList.toggle('auth-signup', nextMode === 'signup');
+      authShell.classList.toggle('auth-signin', nextMode !== 'signup');
+      authTabs.forEach(item => item.classList.toggle('active', item.dataset.authMode === nextMode));
+      authPanels.forEach(item => {
+        const active = item.dataset.authPanel === nextMode;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-hidden', String(!active));
+      });
+      if (clearAlert && authAlert) authAlert.hidden = true;
+      authKicker.textContent = authCopy[nextMode].kicker;
+      authTitle.textContent = authCopy[nextMode].title;
+      authDescription.textContent = authCopy[nextMode].description;
+      document.title = authCopy[nextMode].documentTitle;
+      requestAnimationFrame(setStageHeight);
+
+      if (updateHistory) {
+        const url = new URL(window.location.href);
+        url.pathname = nextMode === 'signup' ? '/signup' : '/signin';
+        window.history.pushState({ authMode: nextMode }, '', url);
+      }
+    };
+
+    authTabs.forEach(item => {
+      item.addEventListener('click', event => {
+        event.preventDefault();
+        setAuthMode(item.dataset.authMode);
+      });
+    });
+    window.addEventListener('popstate', () => {
+      setAuthMode(window.location.pathname.includes('signup') ? 'signup' : 'signin', false);
+    });
+    window.addEventListener('resize', setStageHeight);
+    setAuthMode(authShell.dataset.initialMode, false, false);
+
+    if (!reducedMotion) {
+      requestAnimationFrame(() => document.body.classList.add('auth-ready'));
+    }
+  </script>
+</body>
+</html>

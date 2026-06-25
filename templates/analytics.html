@@ -55,11 +55,6 @@
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c2 2 5 2 7 0"/></svg>
           <span>Mood check-in</span>
         </a>
-        <a class="nav-item" href="/image-analysis">
-          <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
-          <span>Analisis gambar</span>
-        </a>
-
         <p class="nav-label tools-label">Tools</p>
         <a class="nav-item active" href="/analytics">
           <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
@@ -81,9 +76,15 @@
         <div><strong>Tersimpan lokal</strong><p>Grafik dibuat dari metadata di perangkat ini.</p></div>
       </div>
       <div class="sidebar-profile">
-        <span class="avatar avatar-user">D</span>
-        <div><strong>Demo User</strong><span>Ruang pribadi</span></div>
+        <span class="avatar avatar-user">{{ current_user.initial if current_user else 'D' }}</span>
+        <div><strong>{{ current_user.name if current_user else 'Demo User' }}</strong><span>Ruang pribadi</span></div>
         <span class="online-dot" title="Online"></span>
+        <form class="logout-form" action="/logout" method="POST">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button class="logout-button" type="submit" aria-label="Keluar">
+            <svg viewBox="0 0 24 24"><path d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2"/><path d="M15 12H3M7 8l-4 4 4 4"/></svg>
+          </button>
+        </form>
       </div>
     </aside>
 

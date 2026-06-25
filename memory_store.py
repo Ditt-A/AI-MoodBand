@@ -82,7 +82,7 @@ def _ensure_store():
     if os.path.exists(META_PATH):
         with open(META_PATH, "rb") as f:
             metas = pickle.load(f)
-        if faiss is not None and os.path.exists(INDEX_PATH):
+        if metas and faiss is not None and os.path.exists(INDEX_PATH):
             index = faiss.read_index(INDEX_PATH)
         else:
             index = None
@@ -127,10 +127,41 @@ def _persist():
     os.makedirs(DATA_DIR, exist_ok=True)
     if faiss is not None and index is not None:
         faiss.write_index(index, INDEX_PATH)
+    elif faiss is not None and os.path.exists(INDEX_PATH):
+        os.remove(INDEX_PATH)
     with open(META_PATH, "wb") as f:
         pickle.dump(metas, f)
     with open(CONVERSATION_PATH, "wb") as f:
         pickle.dump(conversations, f)
+
+
+def _rebuild_store_from_rows(rows: list[tuple[int, Dict[str, Any]]]):
+    """Renumber metadata rows and preserve existing FAISS vectors when possible."""
+    global index, metas, row_counter
+
+    old_index = index
+    old_dimension = getattr(old_index, "d", None) if old_index is not None else None
+    vectors = []
+    rebuilt: Dict[int, Dict[str, Any]] = {}
+
+    for new_id, (old_id, row) in enumerate(sorted(rows, key=lambda item: item[0])):
+        rebuilt[new_id] = row
+        if old_index is None or faiss is None or old_dimension is None:
+            continue
+        try:
+            vectors.append(old_index.reconstruct(int(old_id)))
+        except Exception:
+            vectors.append(np.zeros(old_dimension, dtype="float32"))
+
+    metas = rebuilt
+    row_counter = len(metas)
+
+    if faiss is not None and old_dimension and vectors:
+        rebuilt_index = faiss.IndexFlatIP(old_dimension)
+        rebuilt_index.add(np.array(vectors, dtype="float32"))
+        index = rebuilt_index
+    else:
+        index = None
 
 
 def _conversation_title(text: str) -> str:
@@ -165,8 +196,63 @@ def get_conversation(user_id: str, conversation_id: str | None) -> Optional[dict
     return dict(conversation)
 
 
+def _conversation_has_chat_rows(user_id: str, conversation_id: str) -> bool:
+    return any(
+        row.get("user_id") == user_id
+        and row.get("conversation_id") == conversation_id
+        and row.get("role") in {"user", "coach"}
+        for row in metas.values()
+    )
+
+
+def _empty_new_conversations(user_id: str) -> list[dict]:
+    rows = [
+        item for item in conversations.values()
+        if item.get("user_id") == user_id
+        and item.get("title") == "Percakapan baru"
+        and not _conversation_has_chat_rows(user_id, item.get("id", ""))
+    ]
+    rows.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
+    return rows
+
+
+def _prune_empty_conversation_duplicates_loaded(
+    user_id: str,
+    keep_id: str | None = None,
+) -> int:
+    empty_rows = _empty_new_conversations(user_id)
+    if len(empty_rows) <= 1:
+        return 0
+    keep = keep_id if keep_id in {item.get("id") for item in empty_rows} else empty_rows[0]["id"]
+    removed = 0
+    for item in empty_rows:
+        conversation_id = item.get("id")
+        if conversation_id == keep:
+            continue
+        conversations.pop(conversation_id, None)
+        removed += 1
+    if removed:
+        _persist()
+    return removed
+
+
+def get_reusable_empty_conversation(user_id: str) -> Optional[dict]:
+    """Ambil satu thread kosong yang aman dipakai ulang untuk flow auth/check-in."""
+    _ensure_store()
+    _prune_empty_conversation_duplicates_loaded(user_id)
+    empty_rows = _empty_new_conversations(user_id)
+    return dict(empty_rows[0]) if empty_rows else None
+
+
+def prune_empty_conversation_duplicates(user_id: str, keep_id: str | None = None) -> int:
+    """Bersihkan duplikat 'Percakapan baru' yang belum memiliki pesan."""
+    _ensure_store()
+    return _prune_empty_conversation_duplicates_loaded(user_id, keep_id=keep_id)
+
+
 def list_conversations(user_id: str, limit: int = 30) -> list[dict]:
     _ensure_store()
+    _prune_empty_conversation_duplicates_loaded(user_id)
     rows = [item for item in conversations.values() if item.get("user_id") == user_id]
     rows.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
     return [dict(item) for item in rows[:max(1, min(int(limit), 100))]]
@@ -337,7 +423,47 @@ def list_recent_messages(
     rows.sort(key=lambda m: m["ts"], reverse=True)
     rows = rows[:limit]
     rows.reverse()
-    return [{"role": r["role"], "text": r["text"], "timestamp": r["ts"]} for r in rows]
+    output = []
+    for row in rows:
+        item = {
+            "role": row["role"],
+            "text": row["text"],
+            "timestamp": row["ts"],
+        }
+        if row.get("image_id"):
+            item.update({
+                "image_id": row.get("image_id"),
+                "image_name": row.get("image_name") or "Gambar dilampirkan",
+                "image_mime": row.get("image_mime"),
+            })
+        output.append(item)
+    return output
+
+
+def get_chat_image(user_id: str, image_id: str | None) -> Optional[dict]:
+    """Ambil file gambar chat milik user yang sedang login."""
+    if not image_id or os.path.basename(image_id) != image_id:
+        return None
+    _ensure_store()
+    record = next(
+        (
+            row for row in metas.values()
+            if row.get("user_id") == user_id
+            and row.get("role") == "user"
+            and row.get("image_id") == image_id
+        ),
+        None,
+    )
+    if not record:
+        return None
+    path = os.path.join(DATA_DIR, "chat_images", user_id, image_id)
+    if not os.path.exists(path):
+        return None
+    return {
+        "path": path,
+        "name": record.get("image_name") or "gambar",
+        "mime": record.get("image_mime") or "application/octet-stream",
+    }
 
 def list_today_messages(user_id: str) -> list[dict]:
     _ensure_store()
@@ -369,6 +495,58 @@ def list_memory_records(user_id: str, limit: int = 60) -> list[dict]:
         }
         for row in rows[:max(1, min(int(limit), 200))]
     ]
+
+
+def count_chat_data(user_id: str, include_summaries: bool = True) -> int:
+    """Hitung semua data refleksi milik user yang akan dihapus dari UI."""
+    _ensure_store()
+    return sum(
+        1 for row in metas.values()
+        if row.get("user_id") == user_id
+        and (
+            row.get("role") in {"user", "coach"}
+            or (include_summaries and row.get("is_summary"))
+        )
+    )
+
+
+def delete_chat_data(user_id: str, include_summaries: bool = True) -> dict:
+    """Hapus pesan, percakapan, dan ringkasan milik user tanpa menghapus akun."""
+    _ensure_store()
+    global conversations
+
+    def should_remove(row: Dict[str, Any]) -> bool:
+        if row.get("user_id") != user_id:
+            return False
+        if row.get("role") in {"user", "coach"}:
+            return True
+        return bool(include_summaries and row.get("is_summary"))
+
+    removed_rows = [row for row in metas.values() if should_remove(row)]
+    kept_rows = [(row_id, row) for row_id, row in metas.items() if not should_remove(row)]
+    for row in removed_rows:
+        image_id = row.get("image_id")
+        if not image_id or os.path.basename(str(image_id)) != str(image_id):
+            continue
+        image_path = os.path.join(DATA_DIR, "chat_images", user_id, str(image_id))
+        if os.path.exists(image_path):
+            os.remove(image_path)
+    removed_conversations = sum(
+        1 for item in conversations.values()
+        if item.get("user_id") == user_id
+    )
+    conversations = {
+        conversation_id: item
+        for conversation_id, item in conversations.items()
+        if item.get("user_id") != user_id
+    }
+
+    _rebuild_store_from_rows(kept_rows)
+    _persist()
+    return {
+        "records": len(removed_rows),
+        "conversations": removed_conversations,
+    }
 
 
 def get_analytics(user_id: str, days: int = 7) -> dict:

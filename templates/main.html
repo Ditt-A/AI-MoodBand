@@ -56,11 +56,6 @@
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c2 2 5 2 7 0"/></svg>
           <span>Mood check-in</span>
         </button>
-        <a class="nav-item" href="/image-analysis">
-          <svg viewBox="0 0 24 24"><path d="m20.5 11.5-8.6 8.6a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.3-8.3"/></svg>
-          <span>Analisis gambar</span>
-        </a>
-
         <p class="nav-label tools-label">Tools</p>
         <a class="nav-item" href="/analytics">
           <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
@@ -87,9 +82,15 @@
         </div>
       </div>
       <div class="sidebar-profile">
-        <span class="avatar avatar-user">D</span>
-        <div><strong>Demo User</strong><span>Ruang pribadi</span></div>
+        <span class="avatar avatar-user">{{ current_user.initial if current_user else 'D' }}</span>
+        <div><strong>{{ current_user.name if current_user else 'Demo User' }}</strong><span>Ruang pribadi</span></div>
         <span class="online-dot" title="Online"></span>
+        <form class="logout-form" action="/logout" method="POST">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button class="logout-button" type="submit" aria-label="Keluar">
+            <svg viewBox="0 0 24 24"><path d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2"/><path d="M15 12H3M7 8l-4 4 4 4"/></svg>
+          </button>
+        </form>
       </div>
     </aside>
 
@@ -152,20 +153,27 @@
             {% for message in recent_messages or [] %}
               <article class="message-row {{ 'message-user' if message.role == 'user' else 'message-assistant' }}">
                 <div class="avatar {{ 'avatar-user' if message.role == 'user' else 'avatar-ai' }}">
-                  {% if message.role == 'user' %}D{% else %}
+                  {% if message.role == 'user' %}{{ current_user.initial if current_user else 'D' }}{% else %}
                     <svg viewBox="0 0 24 24"><path d="M5 14.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0M5 9.5c2.4-5 4.8-5 7.2 0s4.8 5 6.8 0"/></svg>
                   {% endif %}
                 </div>
                 <div class="message-wrap">
                   <div class="message-meta"><strong>{{ 'Kamu' if message.role == 'user' else 'MoodBand' }}</strong><span>{{ message.timestamp[11:16] }}</span></div>
-                  <div class="message-bubble"><p>{{ message.text }}</p></div>
+                  <div class="message-bubble">
+                    <p>{{ message.text }}</p>
+                    {% if message.image_id %}
+                      <figure class="message-image-frame">
+                        <img src="{{ url_for('chat_image', image_id=message.image_id) }}" alt="Gambar dilampirkan: {{ message.image_name }}">
+                      </figure>
+                    {% endif %}
+                  </div>
                 </div>
               </article>
             {% endfor %}
 
             {% if submitted_query %}
               <article class="message-row message-user current-message">
-                <div class="avatar avatar-user">D</div>
+                <div class="avatar avatar-user">{{ current_user.initial if current_user else 'D' }}</div>
                 <div class="message-wrap">
                   <div class="message-meta"><strong>Kamu</strong><span>Baru saja</span></div>
                   <div class="message-bubble">
@@ -210,6 +218,7 @@
 
       <footer class="composer-dock">
         <form action="/search" method="POST" enctype="multipart/form-data" class="chat-form" id="chat-form">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="conversation_id" value="{{ active_conversation.id if active_conversation else '' }}">
           <div class="mood-picker" id="mood-picker">
             <button class="mood-trigger" type="button" data-mood-open>
@@ -223,6 +232,22 @@
               <input type="radio" name="mood" value="marah" {% if prev_mood == 'marah' %}checked{% endif %} tabindex="-1">
               <input type="radio" name="mood" value="senang" {% if prev_mood == 'senang' %}checked{% endif %} tabindex="-1">
             </div>
+          </div>
+
+          <div class="composer-attachment" id="composer-attachment" hidden>
+            <div class="composer-attachment-preview">
+              <img id="attachment-preview-image" alt="Preview gambar yang akan dikirim">
+            </div>
+            <div class="composer-attachment-meta">
+              <strong id="attachment-preview-name">Gambar</strong>
+              <span id="attachment-preview-size"></span>
+              <div class="upload-progress" id="upload-progress" aria-hidden="true">
+                <span id="upload-progress-bar"></span>
+              </div>
+            </div>
+            <button class="attachment-remove" type="button" id="attachment-remove" aria-label="Hapus gambar">
+              <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            </button>
           </div>
 
           <div class="composer-box">
@@ -297,12 +322,12 @@
       </div>
 
       <div class="mood-dialog-actions">
-        <button class="mood-action-secondary" type="button" data-mood-start>
+        <button class="mood-action-primary" type="button" data-mood-start>
           Mulai dari mood ini
-        </button>
-        <button class="mood-action-primary" type="button" data-mood-continue>
-          Lanjut cerita
           <svg viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+        </button>
+        <button class="mood-action-secondary" type="button" data-mood-continue>
+          Lanjut cerita
         </button>
       </div>
       <p class="mood-dialog-note">Pilihanmu membantu MoodBand menyesuaikan nada respons.</p>
@@ -314,6 +339,13 @@
     const textarea = document.getElementById('query');
     const fileInput = document.getElementById('image');
     const fileName = document.getElementById('file-name');
+    const attachmentPanel = document.getElementById('composer-attachment');
+    const attachmentPreviewImage = document.getElementById('attachment-preview-image');
+    const attachmentPreviewName = document.getElementById('attachment-preview-name');
+    const attachmentPreviewSize = document.getElementById('attachment-preview-size');
+    const attachmentRemove = document.getElementById('attachment-remove');
+    const uploadProgress = document.getElementById('upload-progress');
+    const uploadProgressBar = document.getElementById('upload-progress-bar');
     const moodModal = document.getElementById('mood-modal');
     const moodEmoji = document.getElementById('selected-mood-emoji');
     const moodLabel = document.getElementById('selected-mood-label');
@@ -329,10 +361,12 @@
     const actionModalDetails = document.getElementById('action-modal-details');
     const actionStartButton = document.getElementById('action-dialog-start');
     const actionFeedback = document.getElementById('action-dialog-feedback');
+    const userInitial = {{ (current_user.initial if current_user else 'D')|tojson }};
     let moodLastFocused = null;
     let isSending = false;
     let selectedActionCard = null;
     let actionLastFocused = null;
+    let attachmentPreviewUrl = null;
     const moodMeta = {
       normal: { emoji: '😌', label: 'Normal' },
       sedih: { emoji: '😔', label: 'Sedih' },
@@ -365,13 +399,83 @@
       }
     };
 
+    const formatFileSize = bytes => {
+      if (!bytes) return '';
+      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const isAllowedImageFile = file => {
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      return Boolean(file && allowedTypes.includes(file.type));
+    };
+
+    const normalizePastedImage = file => {
+      if (!file) return null;
+      const extension = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      const name = file.name && file.name !== 'image.png'
+        ? file.name
+        : `clipboard-${Date.now()}.${extension}`;
+      return new File([file], name, { type: file.type || 'image/png' });
+    };
+
+    const setUploadProgress = value => {
+      const progress = Math.max(0, Math.min(100, Number(value) || 0));
+      uploadProgressBar.style.width = `${progress}%`;
+      uploadProgress.setAttribute('aria-valuenow', String(Math.round(progress)));
+    };
+
+    const clearComposerAttachment = (revoke = true) => {
+      if (revoke && attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+      attachmentPreviewUrl = null;
+      fileInput.value = '';
+      fileName.textContent = '';
+      attachmentPreviewImage.removeAttribute('src');
+      attachmentPanel.hidden = true;
+      attachmentPanel.classList.remove('is-uploading');
+      setUploadProgress(0);
+    };
+
+    const showComposerAttachment = file => {
+      if (!file) {
+        clearComposerAttachment();
+        return;
+      }
+      if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+      attachmentPreviewUrl = URL.createObjectURL(file);
+      attachmentPreviewImage.src = attachmentPreviewUrl;
+      attachmentPreviewName.textContent = file.name;
+      attachmentPreviewSize.textContent = formatFileSize(file.size);
+      fileName.textContent = file.name;
+      attachmentPanel.hidden = false;
+      attachmentPanel.classList.remove('is-uploading');
+      setUploadProgress(0);
+    };
+
+    const setComposerImageFile = file => {
+      if (!file) return false;
+      if (!isAllowedImageFile(file)) {
+        fileName.textContent = 'Format gambar belum didukung. Gunakan PNG, JPG, GIF, atau WEBP.';
+        return false;
+      }
+      if (file.size > 6 * 1024 * 1024) {
+        fileName.textContent = 'Ukuran gambar terlalu besar. Maksimum 6 MB.';
+        return false;
+      }
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      showComposerAttachment(fileInput.files[0]);
+      return true;
+    };
+
     const appendUserMessage = (text, attachmentName) => {
       if (!text && !attachmentName) return;
       ensureConversationStarted();
       const row = document.createElement('article');
       row.className = 'message-row message-user current-message';
       row.innerHTML = `
-        <div class="avatar avatar-user">D</div>
+        <div class="avatar avatar-user">${userInitial}</div>
         <div class="message-wrap">
           <div class="message-meta"><strong>Kamu</strong><span>${currentTime()}</span></div>
           <div class="message-bubble"><p></p></div>
@@ -385,6 +489,33 @@
       }
       chatColumn.insertBefore(row, safetyNote);
       scrollToLatest();
+    };
+
+    const appendUserMessageWithImage = (text, attachment) => {
+      const hasAttachment = Boolean(attachment?.url);
+      if (!text && !hasAttachment) return null;
+      ensureConversationStarted();
+      const row = document.createElement('article');
+      row.className = 'message-row message-user current-message';
+      row.innerHTML = `
+        <div class="avatar avatar-user">${userInitial}</div>
+        <div class="message-wrap">
+          <div class="message-meta"><strong>Kamu</strong><span>${currentTime()}</span></div>
+          <div class="message-bubble"><p></p></div>
+        </div>`;
+      row.querySelector('p').textContent = text || 'Mengirim gambar untuk direfleksikan.';
+      if (hasAttachment) {
+        const figure = document.createElement('figure');
+        figure.className = 'message-image-frame';
+        const image = document.createElement('img');
+        image.src = attachment.url;
+        image.alt = `Gambar dilampirkan: ${attachment.name || 'gambar'}`;
+        figure.appendChild(image);
+        row.querySelector('.message-bubble').appendChild(figure);
+      }
+      chatColumn.insertBefore(row, safetyNote);
+      scrollToLatest();
+      return row;
     };
 
     const appendTypingMessage = () => {
@@ -548,17 +679,45 @@
       });
     });
 
+    const sendChatRequest = formData => new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/search');
+      xhr.responseType = 'json';
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.setRequestHeader('X-Requested-With', 'fetch');
+      xhr.upload.addEventListener('progress', event => {
+        if (!event.lengthComputable) return;
+        setUploadProgress((event.loaded / event.total) * 100);
+      });
+      xhr.addEventListener('load', () => {
+        const payload = xhr.response || {};
+        if (xhr.status < 200 || xhr.status >= 300 || !payload.ok) {
+          reject(new Error(payload.error || 'Respons tidak dapat diproses.'));
+          return;
+        }
+        resolve(payload);
+      });
+      xhr.addEventListener('error', () => reject(new Error('Koneksi terputus. Coba lagi, ya.')));
+      xhr.send(formData);
+    });
+
     chatForm.addEventListener('submit', async event => {
       event.preventDefault();
       if (isSending) return;
 
       const mode = event.submitter?.value || 'chat';
       const message = textarea.value.trim();
-      const attachmentName = fileInput.files[0]?.name || '';
+      const selectedFile = fileInput.files[0] || null;
+      const localPreviewUrl = attachmentPreviewUrl;
+      const attachment = selectedFile ? {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        url: localPreviewUrl
+      } : null;
       const formData = new FormData(chatForm);
       formData.set('mode', mode);
 
-      appendUserMessage(message, attachmentName);
+      const userRow = appendUserMessageWithImage(message, attachment);
       const activeConversationTitle = document.querySelector('.conversation-link.active .conversation-title');
       if (message && activeConversationTitle?.textContent.trim() === 'Percakapan baru') {
         const cleanTitle = message.replace(/\s+/g, ' ').trim();
@@ -571,26 +730,26 @@
 
       textarea.value = '';
       textarea.style.height = 'auto';
-      fileInput.value = '';
-      fileName.textContent = '';
       isSending = true;
       sendButton.disabled = true;
       chatForm.classList.add('is-sending');
+      if (selectedFile) {
+        attachmentPanel.classList.add('is-uploading');
+        setUploadProgress(3);
+      }
 
       try {
-        const response = await fetch('/search', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'fetch'
-          }
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error || 'Respons tidak dapat diproses.');
-        }
+        const payload = await sendChatRequest(formData);
+        setUploadProgress(100);
         resolveTypingMessage(typingRow, payload.html);
+        if (payload.attachment?.url && userRow) {
+          const image = userRow.querySelector('.message-image-frame img');
+          if (image) {
+            image.src = payload.attachment.url;
+            image.alt = `Gambar dilampirkan: ${payload.attachment.name || 'gambar'}`;
+          }
+          if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        }
         if (payload.conversation?.title) {
           const activeTitle = document.querySelector('.conversation-link.active .conversation-title');
           if (activeTitle) activeTitle.textContent = payload.conversation.title;
@@ -602,6 +761,7 @@
         isSending = false;
         sendButton.disabled = false;
         chatForm.classList.remove('is-sending');
+        clearComposerAttachment(false);
         textarea.focus();
       }
     });
@@ -618,6 +778,30 @@
     });
     fileInput.addEventListener('change', () => {
       fileName.textContent = fileInput.files[0] ? '📎 ' + fileInput.files[0].name : '';
+    });
+
+    fileInput.addEventListener('change', () => {
+      showComposerAttachment(fileInput.files[0]);
+    });
+    attachmentRemove.addEventListener('click', () => clearComposerAttachment());
+
+    chatForm.addEventListener('paste', event => {
+      const items = [...(event.clipboardData?.items || [])];
+      const imageItem = items.find(item => item.kind === 'file' && item.type.startsWith('image/'));
+      if (!imageItem) return;
+
+      const file = normalizePastedImage(imageItem.getAsFile());
+      if (!file) return;
+      event.preventDefault();
+      setComposerImageFile(file);
+
+      const pastedText = event.clipboardData.getData('text/plain');
+      if (pastedText && document.activeElement === textarea) {
+        const start = textarea.selectionStart ?? textarea.value.length;
+        const end = textarea.selectionEnd ?? textarea.value.length;
+        textarea.setRangeText(pastedText, start, end, 'end');
+        textarea.dispatchEvent(new Event('input'));
+      }
     });
 
     const queryActions = new URLSearchParams(window.location.search);

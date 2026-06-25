@@ -8,7 +8,7 @@ This project is a non-clinical emotional support prototype. It can help users re
 
 - Mood-based opening flow for `normal`, `sedih`, `marah`, and `senang`.
 - Text-based curhat analysis with emotions, stress score, topics, risk flag, and coach reply.
-- Optional image upload for extra context.
+- Optional image upload directly in the chat composer, with preview and inline image history.
 - Listen-first response style that asks clarifying questions before giving actions.
 - Suggested self-care actions when appropriate, such as breathing, journaling, grounding, breaks, and reach-out steps.
 - Optimistic chat UI with typing feedback while the model works in the background.
@@ -17,6 +17,9 @@ This project is a non-clinical emotional support prototype. It can help users re
 - Local memory store for recent turns and daily summaries.
 - Daily summary generation with key points, follow-up prompts, and safety flag.
 - Modern Flask UI with responsive styling.
+- Local sign up/sign in with hashed passwords, Flask sessions, and HTTP-only cookies.
+- Account-scoped chat, analytics, memories, and summaries.
+- Clear-all chat data control from the daily summary page.
 
 ## Tech Stack
 
@@ -37,6 +40,7 @@ AI-MoodBand/
 +-- app.py                 # Flask routes and request flow
 +-- model.py               # Gemini coaching, analysis, image handling, HTML rendering
 +-- memory_store.py        # Local memory persistence, embeddings, FAISS search
++-- auth_store.py          # Local account store and password hashing
 +-- summarizer.py          # Daily summary generation
 +-- requirements.txt       # Python dependencies
 +-- API.env.example        # Environment variable template
@@ -44,7 +48,7 @@ AI-MoodBand/
 |   +-- landing.html       # Public-facing landing page and mood entry flow
 |   +-- main.html          # Real-time chat interface
 |   +-- analytics.html     # Local analytics dashboard
-|   +-- tools.html         # Image, summary, and memory tool pages
+|   +-- tools.html         # Summary and memory tool pages
 +-- static/
 |   +-- css/
 |       +-- style.css      # App styling
@@ -85,6 +89,8 @@ API_KEY_GENERATOR=your_gemini_api_key
 API_KEY_SUMMARIZER=your_gemini_api_key
 API_KEY_TODATABASE=your_gemini_api_key
 CSE_ID=
+FLASK_SECRET_KEY=
+FLASK_COOKIE_SECURE=0
 ```
 
 `CSE_ID` is present in the example file but is not used by the current app flow.
@@ -123,16 +129,10 @@ Conversation memory is stored locally in the `data/` folder:
 - `data/memory_meta.pkl` stores metadata and message text.
 - `data/memory.index` stores the FAISS vector index when embeddings are available.
 - `data/conversations.pkl` stores conversation titles and thread timestamps.
+- `data/users.json` stores local account records with hashed passwords.
+- `data/flask_secret.key` stores a local fallback session secret when `FLASK_SECRET_KEY` is not set.
 
-The `data/` folder is ignored by git because it contains local runtime data. Delete the folder if you want to reset local memory.
-
-The current app uses a hardcoded user id:
-
-```python
-USER_ID = "demo_user"
-```
-
-For multi-user use, replace this with a real authentication or session-based user id.
+The `data/` folder is ignored by git because it contains local runtime data. Use the daily summary page to clear chat data for the current account, or delete the folder if you want to reset all local accounts and memory.
 
 ## Environment Variables
 
@@ -142,10 +142,12 @@ For multi-user use, replace this with a real authentication or session-based use
 | `API_KEY_SUMMARIZER` | `summarizer.py` | Generates daily summaries |
 | `API_KEY_TODATABASE` | `memory_store.py` | Creates embeddings for memory search |
 | `CSE_ID` | Not currently used | Reserved from the template |
+| `FLASK_SECRET_KEY` | `app.py` | Optional stable secret for signed session cookies |
+| `FLASK_COOKIE_SECURE` | `app.py` | Set to `1` when serving over HTTPS |
 
 ## Upload Rules
 
-Image uploads are optional. The current Flask route accepts:
+Image uploads are optional from the chat composer. The current Flask route accepts:
 
 - `png`
 - `jpg`

@@ -24,7 +24,10 @@
         <a href="#cara-kerja">Cara kerja</a>
         <a href="#privasi">Privasi</a>
       </div>
-      <button class="landing-nav-cta" type="button" data-enter-chat>Masuk ke ruang chat</button>
+      <div class="landing-auth-actions">
+        <a class="landing-login-link" href="{{ url_for('signin', next=url_for('chat', new=1, checkin=1)) }}">Masuk</a>
+        <a class="landing-nav-cta" href="{{ url_for('signup', next=url_for('chat', new=1, checkin=1)) }}">Daftar</a>
+      </div>
     </nav>
 
     <main>
